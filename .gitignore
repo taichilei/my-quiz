@@ -27,3 +27,11 @@ Thumbs.db
 # Cache
 .cache/
 *.tsbuildinfo
+
+# AI generated files
+CLAUDE.md
+.claude/
+AGENT.md
+.cursor/
+.aider*
+SEP.md
