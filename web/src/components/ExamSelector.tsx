@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { Question } from '../types';
+import { useMemo, useState } from 'react';
+import type { Question, DataSourceType } from '../types';
 
 interface ExamGroup {
   name: string;
@@ -19,12 +19,21 @@ interface Props {
 }
 
 export default function ExamSelector({ questions, onSelectExam, onSelectAll }: Props) {
+  const [selectedSourceType, setSelectedSourceType] = useState<DataSourceType | 'all'>('all');
+
+  // 按来源类型过滤题目
+  const filteredQuestions = useMemo(() => {
+    if (selectedSourceType === 'all') {
+      return questions;
+    }
+    return questions.filter(q => q.sourceType === selectedSourceType);
+  }, [questions, selectedSourceType]);
   // 按试卷分组
   const examGroups = useMemo(() => {
     const groups: Map<string, ExamGroup> = new Map();
     const noExamQuestions: Question[] = [];
 
-    questions.forEach(q => {
+    filteredQuestions.forEach(q => {
       if (!q.exam) {
         noExamQuestions.push(q);
         return;
@@ -62,10 +71,10 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
     });
 
     return { groups: sortedGroups, noExamCount: noExamQuestions.length };
-  }, [questions]);
+  }, [filteredQuestions]);
 
   const handleSelectPart = (examName: string, part: string) => {
-    const filtered = questions.filter(
+    const filtered = filteredQuestions.filter(
       q => q.exam?.name === examName && q.exam?.part === part
     );
     // 按 order 排序
@@ -74,7 +83,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
   };
 
   const handleSelectExam = (examName: string) => {
-    const filtered = questions.filter(q => q.exam?.name === examName);
+    const filtered = filteredQuestions.filter(q => q.exam?.name === examName);
     filtered.sort((a, b) => {
       const partCompare = (a.exam?.part || '').localeCompare(b.exam?.part || '');
       if (partCompare !== 0) return partCompare;
@@ -90,18 +99,55 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
       multiple: 0,
       judge: 0,
     };
-    questions.forEach(q => {
+    filteredQuestions.forEach(q => {
       typeCount[q.type]++;
     });
     return typeCount;
-  }, [questions]);
+  }, [filteredQuestions]);
 
   return (
     <div className="space-y-4">
+      {/* 数据来源过滤器 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">数据来源</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSelectedSourceType('all')}
+            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+              selectedSourceType === 'all'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            全部
+          </button>
+          <button
+            onClick={() => setSelectedSourceType('human')}
+            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+              selectedSourceType === 'human'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            人工
+          </button>
+          <button
+            onClick={() => setSelectedSourceType('machine')}
+            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+              selectedSourceType === 'machine'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            机器
+          </button>
+        </div>
+      </div>
+
       {/* 全部题目 */}
       <div className="bg-white rounded-lg shadow p-4">
         <button
-          onClick={() => onSelectAll(questions)}
+          onClick={() => onSelectAll(filteredQuestions)}
           className="w-full text-left"
         >
           <div className="flex items-center justify-between">
@@ -112,7 +158,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
               </p>
             </div>
             <div className="text-2xl font-bold text-blue-500">
-              {questions.length}
+              {filteredQuestions.length}
             </div>
           </div>
         </button>

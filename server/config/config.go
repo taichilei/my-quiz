@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -16,9 +17,22 @@ type Config struct {
 }
 
 func Load() *Config {
+	// 优先从环境变量读取 MongoDB 连接字符串
+	mongoURI := os.Getenv("MONGO_URI")
+	if mongoURI == "" {
+		// 默认使用本地 MongoDB
+		mongoURI = "mongodb://localhost:27017"
+	}
+	
+	// 优先从环境变量读取数据库名称
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "my-quiz"
+	}
+	
 	return &Config{
-		MongoURI: "mongodb://localhost:27017",
-		DBName:   "my-quiz",
+		MongoURI: mongoURI,
+		DBName:   dbName,
 	}
 }
 

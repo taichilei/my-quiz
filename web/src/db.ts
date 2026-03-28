@@ -1,4 +1,4 @@
-import type { Question } from './types';
+import type { Question, UploadedFile } from './types';
 import { questionApi, recordApi, type AnswerRecord as APIAnswerRecord } from './api/client';
 
 // 本地存储（降级使用）
@@ -11,6 +11,7 @@ localforage.config({
 
 const QUESTIONS_KEY = 'questions';
 const USER_ID_KEY = 'userId';
+const UPLOADED_FILES_KEY = 'uploadedFiles';
 
 /**
  * 获取用户 ID（本地生成或从后端获取）
@@ -202,5 +203,70 @@ export async function getStats(): Promise<{ total: number; correct: number; rate
     return await recordApi.stats(userId);
   } catch {
     return { total: 0, correct: 0, rate: 0 };
+  }
+}
+
+/**
+ * 上传文件
+ */
+export async function uploadFile(file: File): Promise<UploadedFile> {
+  // 生成唯一ID
+  const id = generateId();
+  
+  // 创建文件URL
+  const url = URL.createObjectURL(file);
+  
+  // 构建文件信息
+  const uploadedFile: UploadedFile = {
+    id,
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    url,
+    createdAt: Date.now(),
+    sourceType: 'human' // 默认设置为人工来源
+  };
+  
+  // 保存到本地存储
+  const files = await getUploadedFiles();
+  files.push(uploadedFile);
+  await localforage.setItem(UPLOADED_FILES_KEY, files);
+  
+  return uploadedFile;
+}
+
+/**
+ * 获取所有上传的文件
+ */
+export async function getUploadedFiles(): Promise<UploadedFile[]> {
+  try {
+    const files = await localforage.getItem<UploadedFile[]>(UPLOADED_FILES_KEY);
+    return files || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 删除上传的文件
+ */
+export async function deleteUploadedFile(id: string): Promise<void> {
+  try {
+    const files = await getUploadedFiles();
+    const filteredFiles = files.filter(file => file.id !== id);
+    await localforage.setItem(UPLOADED_FILES_KEY, filteredFiles);
+  } catch {
+    // 静默失败
+  }
+}
+
+/**
+ * 清空所有上传的文件
+ */
+export async function clearUploadedFiles(): Promise<void> {
+  try {
+    await localforage.setItem(UPLOADED_FILES_KEY, []);
+  } catch {
+    // 静默失败
   }
 }

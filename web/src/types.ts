@@ -1,4 +1,9 @@
 /**
+ * 数据来源类型
+ */
+export type DataSourceType = 'human' | 'machine';
+
+/**
  * 题目类型
  */
 export type QuestionType = 'single' | 'multiple' | 'judge';
@@ -50,10 +55,24 @@ export interface Question {
   difficulty?: Difficulty;         // 难度等级
   tags?: string[];                 // 标签
   images?: string[];               // 图片相对路径列表
+  sourceType?: DataSourceType;     // 数据来源类型
 
   // ===== 系统字段 =====
   updatedAt?: number;              // 更新时间戳（毫秒）
   answerHistory?: AnswerRecord[];  // 作答记录（本地存储）
+}
+
+/**
+ * 上传文件信息
+ */
+export interface UploadedFile {
+  id: string;              // 文件唯一标识
+  name: string;            // 文件名
+  type: string;            // 文件类型
+  size: number;            // 文件大小（字节）
+  url: string;             // 文件本地 URL
+  createdAt: number;       // 上传时间戳
+  sourceType?: DataSourceType; // 数据来源类型
 }
 
 /**
