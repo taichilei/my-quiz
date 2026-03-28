@@ -1,6 +1,8 @@
-import localforage from 'localforage';
 import type { Question } from './types';
-import { initialQuestions } from './data/questions';
+import { questionApi, recordApi, type AnswerRecord as APIAnswerRecord } from './api/client';
+
+// 本地存储（降级使用）
+import localforage from 'localforage';
 
 localforage.config({
   name: 'my-quiz',
@@ -8,24 +10,51 @@ localforage.config({
 });
 
 const QUESTIONS_KEY = 'questions';
-const INIT_KEY = 'initialized';
+const USER_ID_KEY = 'userId';
+
+/**
+ * 获取用户 ID（本地生成或从后端获取）
+ */
+export async function getUserId(): Promise<string> {
+  let userId = await localforage.getItem<string>(USER_ID_KEY);
+  if (!userId) {
+    userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    await localforage.setItem(USER_ID_KEY, userId);
+  }
+  return userId;
+}
 
 /**
  * 获取所有题目
  */
 export async function getQuestions(): Promise<Question[]> {
-  const questions = await localforage.getItem<Question[]>(QUESTIONS_KEY);
-  return questions || [];
+  try {
+    const questions = await questionApi.list();
+    return questions as Question[];
+  } catch (e) {
+    // 降级到本地存储
+    console.warn('API unavailable, using local storage');
+    const questions = await localforage.getItem<Question[]>(QUESTIONS_KEY);
+    return questions || [];
+  }
 }
 
 /**
  * 初始化题目（首次加载时）
  */
 export async function initQuestions(): Promise<void> {
-  const initialized = await localforage.getItem<boolean>(INIT_KEY);
-  if (!initialized) {
-    await localforage.setItem(QUESTIONS_KEY, initialQuestions);
-    await localforage.setItem(INIT_KEY, true);
+  try {
+    // 尝试从后端获取
+    await questionApi.list();
+    // 后端已有数据，无需初始化
+  } catch {
+    // 后端不可用，降级到本地
+    console.warn('API unavailable, using local storage');
+    const initialized = await localforage.getItem<boolean>('initialized');
+    if (!initialized) {
+      await localforage.setItem(QUESTIONS_KEY, []);
+      await localforage.setItem('initialized', true);
+    }
   }
 }
 
@@ -33,20 +62,30 @@ export async function initQuestions(): Promise<void> {
  * 保存题目
  */
 export async function saveQuestion(question: Question): Promise<void> {
-  const questions = await getQuestions();
-  questions.push(question);
-  await localforage.setItem(QUESTIONS_KEY, questions);
+  try {
+    await questionApi.create(question as any);
+  } catch {
+    // 降级到本地
+    const questions = await getQuestions();
+    questions.push(question);
+    await localforage.setItem(QUESTIONS_KEY, questions);
+  }
 }
 
 /**
  * 更新题目
  */
 export async function updateQuestion(id: string, updates: Partial<Question>): Promise<void> {
-  const questions = await getQuestions();
-  const index = questions.findIndex(q => q.id === id);
-  if (index !== -1) {
-    questions[index] = { ...questions[index], ...updates, updatedAt: Date.now() };
-    await localforage.setItem(QUESTIONS_KEY, questions);
+  try {
+    await questionApi.update(id, updates as any);
+  } catch {
+    // 降级到本地
+    const questions = await getQuestions();
+    const index = questions.findIndex(q => q.id === id);
+    if (index !== -1) {
+      questions[index] = { ...questions[index], ...updates, updatedAt: Date.now() };
+      await localforage.setItem(QUESTIONS_KEY, questions);
+    }
   }
 }
 
@@ -54,19 +93,32 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
  * 删除题目
  */
 export async function deleteQuestion(id: string): Promise<void> {
-  const questions = await getQuestions();
-  const filtered = questions.filter(q => q.id !== id);
-  await localforage.setItem(QUESTIONS_KEY, filtered);
+  try {
+    await questionApi.delete(id);
+  } catch {
+    // 降级到本地
+    const questions = await getQuestions();
+    const filtered = questions.filter(q => q.id !== id);
+    await localforage.setItem(QUESTIONS_KEY, filtered);
+  }
 }
 
 /**
  * 批量导入题目
  */
 export async function importQuestions(newQuestions: Question[]): Promise<void> {
-  const questions = await getQuestions();
-  const existingIds = new Set(questions.map(q => q.id));
-  const uniqueNewQuestions = newQuestions.filter(q => !existingIds.has(q.id));
-  await localforage.setItem(QUESTIONS_KEY, [...questions, ...uniqueNewQuestions]);
+  try {
+    // 逐个创建
+    for (const q of newQuestions) {
+      await questionApi.create(q as any);
+    }
+  } catch {
+    // 降级到本地
+    const questions = await getQuestions();
+    const existingIds = new Set(questions.map(q => q.id));
+    const uniqueNewQuestions = newQuestions.filter(q => !existingIds.has(q.id));
+    await localforage.setItem(QUESTIONS_KEY, [...questions, ...uniqueNewQuestions]);
+  }
 }
 
 /**
@@ -80,8 +132,18 @@ export async function exportQuestions(): Promise<Question[]> {
  * 清空所有题目
  */
 export async function clearQuestions(): Promise<void> {
+  // 仅清空本地，后端数据保留
   await localforage.setItem(QUESTIONS_KEY, []);
-  await localforage.setItem(INIT_KEY, false);
+  await localforage.setItem('initialized', false);
+}
+
+/**
+ * 重新从 question-banks 目录加载题目并合并
+ */
+export async function reloadQuestionBanks(): Promise<number> {
+  // 静默失败，后端已内置题库
+  console.warn('reloadQuestionBanks: not supported in API mode');
+  return 0;
 }
 
 /**
@@ -100,19 +162,45 @@ export async function recordAnswer(
   isCorrect: boolean,
   timeSpent?: number
 ): Promise<void> {
-  const questions = await getQuestions();
-  const index = questions.findIndex(q => q.id === questionId);
-  if (index !== -1) {
-    const question = questions[index];
-    const answerRecord = {
-      answeredAt: Date.now(),
-      userAnswer,
-      isCorrect,
-      timeSpent,
-    };
-    question.answerHistory = question.answerHistory || [];
-    question.answerHistory.push(answerRecord);
-    question.updatedAt = Date.now();
-    await localforage.setItem(QUESTIONS_KEY, questions);
+  const userId = await getUserId();
+  const record: APIAnswerRecord = {
+    userId,
+    questionId,
+    userAnswer: String(userAnswer),
+    isCorrect,
+    timeSpent,
+    answeredAt: Date.now(),
+  };
+
+  try {
+    await recordApi.create(record);
+  } catch {
+    // 降级到本地存储
+    const questions = await getQuestions();
+    const index = questions.findIndex(q => q.id === questionId);
+    if (index !== -1) {
+      const question = questions[index];
+      question.answerHistory = question.answerHistory || [];
+      question.answerHistory.push({
+        answeredAt: Date.now(),
+        userAnswer: String(userAnswer),
+        isCorrect,
+        timeSpent,
+      });
+      question.updatedAt = Date.now();
+      await localforage.setItem(QUESTIONS_KEY, questions);
+    }
+  }
+}
+
+/**
+ * 获取答题统计
+ */
+export async function getStats(): Promise<{ total: number; correct: number; rate: number }> {
+  const userId = await getUserId();
+  try {
+    return await recordApi.stats(userId);
+  } catch {
+    return { total: 0, correct: 0, rate: 0 };
   }
 }
