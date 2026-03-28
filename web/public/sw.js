@@ -1,8 +1,11 @@
-const CACHE_NAME = 'my-quiz-v2';
+const CACHE_NAME = 'my-quiz-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/icons/icon.svg',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
 ];
 
 // 安装事件 - 缓存静态资源
