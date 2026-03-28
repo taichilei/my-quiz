@@ -1,0 +1,19 @@
+{
+  "id": "jiangsu-2021-04",
+  "name": "2021年4月江苏省事业单位招聘考试",
+  "description": "2021年4月江苏省事业单位招聘考试选择题真题",
+  "language": "zh-CN",
+  "author": "my-quiz",
+  "source": "历年真题整理",
+  "createdAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "questionCount": 0,
+  "tags": ["事业编", "江苏", "2021"],
+  "exams": [
+    {
+      "name": "2021年4月江苏省事业单位招聘考试",
+      "year": 2021,
+      "subject": "行政职业能力测验"
+    }
+  ]
+}
