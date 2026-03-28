@@ -130,7 +130,23 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
           </span>
         </div>
 
-        <p className="text-gray-800 mb-4">{currentQuestion.content}</p>
+        <div className="mb-4">
+          <p className="text-gray-800 mb-2">{currentQuestion.content}</p>
+          {currentQuestion.images && currentQuestion.images.length > 0 && (
+            <div className="space-y-2">
+              {currentQuestion.images.map((image, index) => (
+                <div key={index} className="rounded-lg overflow-hidden border">
+                  <img 
+                    src={image} 
+                    alt={`Question image ${index + 1}`} 
+                    className="w-full h-auto object-contain"
+                    style={{ maxHeight: '300px' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-2 mb-4">
           {judgeOptions.map(opt => {
@@ -213,7 +229,23 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
           </span>
         </div>
 
-        <p className="text-gray-800 mb-4">{currentQuestion.content}</p>
+        <div className="mb-4">
+          <p className="text-gray-800 mb-2">{currentQuestion.content}</p>
+          {currentQuestion.images && currentQuestion.images.length > 0 && (
+            <div className="space-y-2">
+              {currentQuestion.images.map((image, index) => (
+                <div key={index} className="rounded-lg overflow-hidden border">
+                  <img 
+                    src={image} 
+                    alt={`Question image ${index + 1}`} 
+                    className="w-full h-auto object-contain"
+                    style={{ maxHeight: '300px' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-2 mb-4">
           {currentQuestion.options?.map((opt, idx) => {

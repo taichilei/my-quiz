@@ -1,6 +1,15 @@
+import ImportExport from './ImportExport';
+
 export default function Profile() {
+  const handleImported = () => {
+    // 刷新后会自动更新题库数量
+  };
+
   return (
     <div className="space-y-4">
+      {/* 导入导出 */}
+      <ImportExport onImported={handleImported} />
+
       {/* 应用信息 */}
       <div className="bg-white rounded-lg shadow p-6 text-center">
         <div className="w-16 h-16 bg-blue-500 rounded-2xl mx-auto mb-4 flex items-center justify-center">
@@ -9,7 +18,7 @@ export default function Profile() {
           </svg>
         </div>
         <h1 className="text-xl font-bold text-gray-800">刷题助手</h1>
-        <p className="text-sm text-gray-500 mt-1">版本 1.0.0</p>
+        <p className="text-sm text-gray-500 mt-1">版本 0.1.0</p>
       </div>
 
       {/* 功能介绍 */}

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { importQuestionBank, exportQuestionsJson } from '../utils/import';
-import { getQuestions, importQuestions, clearQuestions } from '../db';
+import { getQuestions, importQuestions, clearQuestions, reloadQuestionBanks } from '../db';
 
 interface Props {
   onImported: () => void;
@@ -73,6 +73,20 @@ export default function ImportExport({ onImported }: Props) {
     }
   };
 
+  const handleReloadBanks = async () => {
+    try {
+      const count = await reloadQuestionBanks();
+      if (count > 0) {
+        setMessage({ type: 'success', text: `已添加 ${count} 道新题目` });
+        onImported();
+      } else {
+        setMessage({ type: 'success', text: '题库已是最新' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: '刷新题库失败' });
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
       <h2 className="text-lg font-semibold text-gray-800">导入导出</h2>
@@ -104,6 +118,12 @@ export default function ImportExport({ onImported }: Props) {
           className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
         >
           导出题目
+        </button>
+        <button
+          onClick={handleReloadBanks}
+          className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+        >
+          刷新题库
         </button>
         <button
           onClick={handleClear}

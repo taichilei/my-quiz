@@ -61,13 +61,15 @@ export default function App() {
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4 pb-20">
-      <header className="text-center py-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">刷题助手</h1>
-        <p className="text-sm text-gray-500 mt-1">共 {questions.length} 道题目</p>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm py-4 mb-4">
+        <div className="max-w-4xl mx-auto px-4">
+          <h1 className="text-2xl font-bold text-gray-800">刷题助手</h1>
+          <p className="text-sm text-gray-500 mt-1">共 {questions.length} 道题目</p>
+        </div>
       </header>
 
-      <main>
+      <main className="max-w-3xl mx-auto px-4 pb-20">
         {/* 刷题模式：试卷选择 or 刷题卡片 */}
         {tab === 'quiz' && (
           isQuizActive ? (
@@ -112,7 +114,7 @@ export default function App() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-        <div className="max-w-lg mx-auto flex">
+        <div className="max-w-3xl mx-auto flex">
           <button
             onClick={() => {
               setTab('quiz');
