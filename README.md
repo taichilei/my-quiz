@@ -1,42 +1,11 @@
 # My-Quiz
 
-开源刷题工具，帮助考研、考公、考编等各类考试人群高效复习。
-
 ## 项目简介
-
-My-Quiz 是一个轻量级的刷题 Web 应用，旨在打破教育机构的信息差，让每个人都能方便地管理和练习题目。
 
 **核心特点：**
 
-- 开源免费
-- 离线可用（PWA）
-- 数据本地存储
 - 支持导入导出
 - 跨平台（iOS/Android/PC）
-
-## 快速开始
-
-### 在线使用
-
-访问网站即可使用（待部署）。
-
-### 本地运行
-
-```bash
-# 克隆仓库
-git clone https://github.com/your-username/my-quiz.git
-
-# 进入 web 目录
-cd my-quiz/web
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
-
-浏览器访问 http://localhost:5173
 
 ## 文档
 
@@ -118,8 +87,12 @@ my-quiz/
 - 前端框架：React 18 + TypeScript
 - 构建工具：Vite
 - 样式方案：Tailwind CSS
-- 本地存储：localForage (IndexedDB封装)
 - 路由：React Router (如果需要多页面)
+
+## 数据库设计
+
+- 可能的题型：单选题、多选题、填空题、解答题
+- 
 
 ## 设计要求
 
