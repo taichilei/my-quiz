@@ -12,7 +12,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/my-quiz.git
+git clone https://github.com/taichilei/my-quiz.git
 
 # 进入 web 目录
 cd my-quiz/web
