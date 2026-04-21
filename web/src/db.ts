@@ -202,8 +202,39 @@ export async function getStats(): Promise<{ total: number; correct: number; rate
   try {
     return await recordApi.stats(userId);
   } catch {
-    return { total: 0, correct: 0, rate: 0 };
+    // 从本地 answerHistory 统计
+    const questions = await getQuestions();
+    let total = 0;
+    let correct = 0;
+    questions.forEach(q => {
+      if (q.answerHistory) {
+        q.answerHistory.forEach(h => {
+          total++;
+          if (h.isCorrect) correct++;
+        });
+      }
+    });
+    const rate = total > 0 ? correct / total : 0;
+    return { total, correct, rate };
   }
+}
+
+/**
+ * 获取错题列表（做错过的题目）
+ */
+export async function getWrongQuestions(): Promise<Question[]> {
+  const all = await getQuestions();
+  return all.filter(q =>
+    q.answerHistory && q.answerHistory.some(h => !h.isCorrect)
+  );
+}
+
+/**
+ * 获取收藏题目列表
+ */
+export async function getFavoriteQuestions(): Promise<Question[]> {
+  const all = await getQuestions();
+  return all.filter(q => q.favorite === true);
 }
 
 /**

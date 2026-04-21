@@ -110,7 +110,14 @@ export default function App() {
         )}
 
         {/* 我的 */}
-        {tab === 'profile' && <Profile />}
+        {tab === 'profile' && (
+          <Profile
+            onStartWrongNotes={(questions, title) => {
+              handleStartQuiz(questions, title);
+              setTab('quiz');
+            }}
+          />
+        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">

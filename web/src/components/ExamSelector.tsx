@@ -20,14 +20,30 @@ interface Props {
 
 export default function ExamSelector({ questions, onSelectExam, onSelectAll }: Props) {
   const [selectedSourceType, setSelectedSourceType] = useState<DataSourceType | 'all'>('all');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
 
-  // 按来源类型过滤题目
+  // 获取所有标签
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    questions.forEach(q => {
+      if (q.tags) {
+        q.tags.forEach(tag => tags.add(tag));
+      }
+    });
+    return Array.from(tags);
+  }, [questions]);
+
+  // 按来源类型和标签过滤题目
   const filteredQuestions = useMemo(() => {
-    if (selectedSourceType === 'all') {
-      return questions;
+    let filtered = questions;
+    if (selectedSourceType !== 'all') {
+      filtered = filtered.filter(q => q.sourceType === selectedSourceType);
     }
-    return questions.filter(q => q.sourceType === selectedSourceType);
-  }, [questions, selectedSourceType]);
+    if (selectedTag !== 'all') {
+      filtered = filtered.filter(q => q.tags?.includes(selectedTag));
+    }
+    return filtered;
+  }, [questions, selectedSourceType, selectedTag]);
   // 按试卷分组
   const examGroups = useMemo(() => {
     const groups: Map<string, ExamGroup> = new Map();
@@ -143,6 +159,38 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
           </button>
         </div>
       </div>
+
+      {/* 标签筛选 */}
+      {allTags.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">按标签筛选</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedTag('all')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedTag === 'all'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              全部
+            </button>
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(tag)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedTag === tag
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 全部题目 */}
       <div className="bg-white rounded-lg shadow p-4">

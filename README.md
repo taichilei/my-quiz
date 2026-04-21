@@ -32,22 +32,6 @@ my-quiz/
 | Tailwind CSS | 样式 |
 | IndexedDB | 本地存储 |
 | PWA | 离线支持 |
-
-## 贡献
-
-欢迎贡献代码、题库或文档！
-
-- [贡献指南](./docs/developer-guide/contributing.md)
-- [题库贡献](./question-banks/README.md)
-
-## 开源协议
-
-[MIT License](./LICENSE)
-
-## 致谢
-
-感谢所有贡献者！
-
 ---
 
 # 刷题Web应用开发需求

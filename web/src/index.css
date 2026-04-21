@@ -5,3 +5,51 @@
 body {
   @apply bg-gray-100 min-h-screen;
 }
+
+html.dark body {
+  @apply bg-gray-900;
+}
+
+html.dark .bg-white {
+  @apply bg-gray-800 !important;
+}
+
+html.dark .bg-gray-50 {
+  @apply bg-gray-700 !important;
+}
+
+html.dark .bg-gray-100 {
+  @apply bg-gray-700 !important;
+}
+
+html.dark .border-gray-200 {
+  @apply border-gray-600 !important;
+}
+
+html.dark .text-gray-500 {
+  @apply text-gray-400 !important;
+}
+
+html.dark .text-gray-600 {
+  @apply text-gray-300 !important;
+}
+
+html.dark .text-gray-700 {
+  @apply text-gray-200 !important;
+}
+
+html.dark .text-gray-800 {
+  @apply text-gray-100 !important;
+}
+
+html.dark .text-gray-400 {
+  @apply text-gray-500 !important;
+}
+
+html.dark .hover\:bg-gray-50:hover {
+  @apply bg-gray-700 !important;
+}
+
+html.dark .hover\:bg-gray-200:hover {
+  @apply bg-gray-600 !important;
+}

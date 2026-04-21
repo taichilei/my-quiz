@@ -1,12 +1,98 @@
+import { useState, useEffect } from 'react';
 import ImportExport from './ImportExport';
+import WrongNotes from './WrongNotes';
+import { getQuestions, getStats, getWrongQuestions } from '../db';
+import { useTheme } from '../context/ThemeContext';
 
-export default function Profile() {
+interface Props {
+  onStartWrongNotes?: (questions: any[], title: string) => void;
+}
+
+interface Stats {
+  total: number;
+  correct: number;
+  rate: number;
+}
+
+export default function Profile({ onStartWrongNotes }: Props) {
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [stats, setStats] = useState<Stats>({ total: 0, correct: 0, rate: 0 });
+  const [loading, setLoading] = useState(true);
+  const { theme, toggleTheme } = useTheme();
+
+  const loadStats = async () => {
+    setLoading(true);
+    const [questions, wrongQuestions, statsData] = await Promise.all([
+      getQuestions(),
+      getWrongQuestions(),
+      getStats()
+    ]);
+    setTotalQuestions(questions.length);
+    setWrongCount(wrongQuestions.length);
+    setStats(statsData);
+    setLoading(false);
+  };
+
   const handleImported = () => {
+    loadStats();
     // 刷新后会自动更新题库数量
   };
 
+  useEffect(() => {
+    loadStats();
+  }, []);
+
   return (
     <div className="space-y-4">
+      {/* 统计面板 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">学习统计</h3>
+        {loading ? (
+          <div className="text-gray-500 text-center py-4">加载中...</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{totalQuestions}</div>
+              <div className="text-sm text-gray-500">总题数</div>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">{wrongCount}</div>
+              <div className="text-sm text-gray-500">错题数</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                {stats.total > 0 ? `${Math.round(stats.rate * 100)}%` : '-'}
+              </div>
+              <div className="text-sm text-gray-500">正确率</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 外观设置 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">外观设置</h3>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-600">深色模式</span>
+          <button
+            onClick={toggleTheme}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              theme === 'dark'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {theme === 'dark' ? '已开启' : '已关闭'}
+          </button>
+        </div>
+      </div>
+
+      {/* 错题本入口 */}
+      {!loading && wrongCount > 0 && (
+        <WrongNotes onStartQuiz={handleStartWrongNotes} />
+      )}
+
       {/* 导入导出 */}
       <ImportExport onImported={handleImported} />
 

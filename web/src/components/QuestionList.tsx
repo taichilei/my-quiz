@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { Question } from '../types';
 import { deleteQuestion, importQuestions, clearQuestions } from '../db';
 import { importQuestionBank, exportQuestionsJson } from '../utils/import';
+import QuestionForm from './QuestionForm';
 
 interface Props {
   questions: Question[];
@@ -28,6 +29,7 @@ export default function QuestionList({ questions, onUpdated }: Props) {
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [expandedExam, setExpandedExam] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const examGroups = groupByExam(questions);
@@ -195,12 +197,20 @@ export default function QuestionList({ questions, onUpdated }: Props) {
                             <span className="text-gray-400 mr-2">{idx + 1}.</span>
                             <span className="text-gray-800">{q.content}</span>
                           </div>
-                          <button
-                            onClick={() => handleDelete(q.id)}
-                            className="text-red-400 hover:text-red-600 text-xs"
-                          >
-                            删除
-                          </button>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setEditingQuestion(q)}
+                              className="text-blue-400 hover:text-blue-600 text-xs"
+                            >
+                              编辑
+                            </button>
+                            <button
+                              onClick={() => handleDelete(q.id)}
+                              className="text-red-400 hover:text-red-600 text-xs"
+                            >
+                              删除
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -210,6 +220,21 @@ export default function QuestionList({ questions, onUpdated }: Props) {
             ))}
           </div>
         )}
+
+        {/* 编辑题目表单 */}
+        {editingQuestion && (
+          <QuestionForm
+            editingQuestion={editingQuestion}
+            onSaved={() => {
+              setEditingQuestion(null);
+              onUpdated();
+            }}
+            onCancel={() => setEditingQuestion(null)}
+          />
+        )}
+
+        {/* 添加新题目表单 */}
+        {!editingQuestion && <QuestionForm onSaved={onUpdated} />}
       </div>
     </div>
   );

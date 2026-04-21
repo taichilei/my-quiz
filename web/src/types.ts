@@ -60,6 +60,7 @@ export interface Question {
   // ===== 系统字段 =====
   updatedAt?: number;              // 更新时间戳（毫秒）
   answerHistory?: AnswerRecord[];  // 作答记录（本地存储）
+  favorite?: boolean;              // 是否收藏
 }
 
 /**
