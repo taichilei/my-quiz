@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Question } from '../types';
-import { getWrongQuestions } from '../db';
+import { questionApi, recordApi } from '../api/client';
+
+const USER_ID = 'default-user';
 
 interface Props {
   onStartQuiz: (questions: Question[], title: string) => void;
@@ -12,8 +14,20 @@ export default function WrongNotes({ onStartQuiz }: Props) {
 
   const loadWrongQuestions = async () => {
     setLoading(true);
-    const questions = await getWrongQuestions();
-    setWrongQuestions(questions);
+    // 获取所有错题ID
+    const records = await recordApi.list(USER_ID);
+    const wrongQuestionIds = new Set<string>();
+    records.forEach(r => {
+      if (!r.isCorrect) {
+        wrongQuestionIds.add(r.questionId);
+      }
+    });
+
+    // 获取所有题目并筛选出错题
+    const allQuestions = await questionApi.list();
+    const wrongQuestions = allQuestions.filter(q => wrongQuestionIds.has(q.id));
+
+    setWrongQuestions(wrongQuestions);
     setLoading(false);
   };
 

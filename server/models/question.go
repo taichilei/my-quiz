@@ -4,47 +4,47 @@ import "time"
 
 // Question 题目
 type Question struct {
-	ID          string    `json:"id" bson:"_id,omitempty"`
-	Type        string    `json:"type" bson:"type"` // single, multiple, judge
-	Content     string    `json:"content" bson:"content"`
-	Options     []string  `json:"options" bson:"options"`
-	Answer      string    `json:"answer" bson:"answer"`
-	Explanation string    `json:"explanation" bson:"explanation,omitempty"`
-	Difficulty  int       `json:"difficulty" bson:"difficulty"`
-	Tags        []string  `json:"tags" bson:"tags,omitempty"`
-	Exam        Exam      `json:"exam" bson:"exam,omitempty"`
-	Images      []string  `json:"images" bson:"images,omitempty"`
-	CreatedAt   int64     `json:"createdAt" bson:"createdAt"`
-	UpdatedAt   int64     `json:"updatedAt" bson:"updatedAt"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"` // single, multiple, judge
+	Content     string    `json:"content"`
+	Options     []string  `json:"options"`
+	Answer      string    `json:"answer"`
+	Explanation string    `json:"explanation"`
+	Difficulty  int       `json:"difficulty"`
+	Tags        []string  `json:"tags"`
+	Exam        Exam      `json:"exam"`
+	Images      []string  `json:"images"`
+	CreatedAt   int64     `json:"createdAt"`
+	UpdatedAt   int64     `json:"updatedAt"`
 }
 
 // Exam 试卷信息
 type Exam struct {
-	Name    string `json:"name" bson:"name"`
-	Year    int    `json:"year" bson:"year"`
-	Subject string `json:"subject" bson:"subject"`
-	Part    string `json:"part" bson:"part,omitempty"`
-	Order   int    `json:"order" bson:"order"`
+	Name    string `json:"name"`
+	Year    int    `json:"year"`
+	Subject string `json:"subject"`
+	Part    string `json:"part"`
+	Order   int    `json:"order"`
 }
 
 // AnswerRecord 答题记录
 type AnswerRecord struct {
-	ID          string `json:"id" bson:"_id,omitempty"`
-	UserID      string `json:"userId" bson:"userId"`
-	QuestionID  string `json:"questionId" bson:"questionId"`
-	UserAnswer  string `json:"userAnswer" bson:"userAnswer"`
-	IsCorrect   bool   `json:"isCorrect" bson:"isCorrect"`
-	TimeSpent   int    `json:"timeSpent" bson:"timeSpent,omitempty"`
-	AnsweredAt  int64  `json:"answeredAt" bson:"answeredAt"`
+	ID          int    `json:"id"`
+	UserID      string `json:"userId"`
+	QuestionID  string `json:"questionId"`
+	UserAnswer  string `json:"userAnswer"`
+	IsCorrect   bool   `json:"isCorrect"`
+	TimeSpent   int    `json:"timeSpent"`
+	AnsweredAt  int64  `json:"answeredAt"`
 }
 
 // ExamInfo 试卷摘要
 type ExamInfo struct {
-	Name    string `json:"name" bson:"name"`
-	Year    int    `json:"year" bson:"year"`
-	Subject string `json:"subject" bson:"subject"`
-	Part    string `json:"part" bson:"part"`
-	Count   int    `json:"count" bson:"count"`
+	Name    string `json:"name"`
+	Year    int    `json:"year"`
+	Subject string `json:"subject"`
+	Part    string `json:"part"`
+	Count   int    `json:"count"`
 }
 
 // NewQuestion 创建新题目

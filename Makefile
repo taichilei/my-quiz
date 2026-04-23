@@ -25,7 +25,7 @@ up:
 	@echo "服务已启动:"
 	@echo "  - Web UI: http://localhost:3000"
 	@echo "  - API: http://localhost:8080"
-	@echo "  - MongoDB: localhost:27017"
+	@echo "  - PostgreSQL: localhost:5432"
 
 # 停止所有服务
 down:

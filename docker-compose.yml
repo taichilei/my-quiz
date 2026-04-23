@@ -1,15 +1,19 @@
 version: '3.8'
 
 services:
-  # MongoDB 数据库
-  mongo:
-    image: mongo:7
-    container_name: my-quiz-mongo
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: my-quiz-postgres
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=my-quiz
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     volumes:
-      - mongo_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - my-quiz-net
 
@@ -24,9 +28,9 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - MONGO_URI=mongodb://mongo:27017
+      - POSTGRES_URI=postgres://postgres:postgres@postgres:5432/my-quiz?sslmode=disable
     depends_on:
-      - mongo
+      - postgres
     networks:
       - my-quiz-net
 
@@ -45,7 +49,7 @@ services:
       - my-quiz-net
 
 volumes:
-  mongo_data:
+  postgres_data:
 
 networks:
   my-quiz-net:

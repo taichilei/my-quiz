@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Question, QuestionType, Difficulty, ExamRef } from '../types';
-import { saveQuestion, generateId, updateQuestion, uploadFile, deleteUploadedFile } from '../db';
+import { questionApi } from '../api/client';
 
 interface Props {
   onSaved: () => void;
@@ -125,8 +125,7 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       if (editingQuestion) {
         // 更新现有题目
-        const updated: Question = {
-          ...editingQuestion,
+        const updated: Partial<Question> = {
           type,
           content: content.trim(),
           options: type === 'judge' ? undefined : options.map(o => o.trim()).filter(Boolean),
@@ -138,11 +137,10 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
           exam,
           updatedAt: Date.now(),
         };
-        await updateQuestion(editingQuestion.id, updated);
+        await questionApi.update(editingQuestion.id, updated);
       } else {
         // 创建新题目
-        const question: Question = {
-          id: generateId(),
+        const question: Omit<Question, 'id'> = {
           type,
           content: content.trim(),
           options: type === 'judge' ? undefined : options.map(o => o.trim()),
@@ -154,7 +152,7 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
           exam,
           createdAt: Date.now(),
         };
-        await saveQuestion(question);
+        await questionApi.create(question);
         resetForm();
       }
 

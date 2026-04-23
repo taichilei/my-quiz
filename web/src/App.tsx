@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import type { Question } from './types';
-import { getQuestions, initQuestions } from './db';
+import { questionApi } from './api/client';
 import QuestionList from './components/QuestionList';
 import QuizCard from './components/QuizCard';
 import ExamSelector from './components/ExamSelector';
 import Profile from './components/Profile';
 
 type Tab = 'quiz' | 'list' | 'profile';
+
+const USER_ID = 'default-user';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('quiz');
@@ -19,8 +21,7 @@ export default function App() {
   const [isQuizActive, setIsQuizActive] = useState(false);
 
   const loadQuestions = async () => {
-    await initQuestions();
-    const data = await getQuestions();
+    const data = await questionApi.list();
     setQuestions(data);
     setLoading(false);
   };

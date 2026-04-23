@@ -1,32 +1,27 @@
 package handlers
 
 import (
-	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
 	"my-quiz/models"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type RecordHandler struct {
-	collection *mongo.Collection
+	db *sql.DB
 }
 
-func NewRecordHandler(db *mongo.Database) *RecordHandler {
+func NewRecordHandler(db *sql.DB) *RecordHandler {
 	return &RecordHandler{
-		collection: db.Collection("records"),
+		db: db,
 	}
 }
 
 // CreateRecord 保存答题记录
 func (h *RecordHandler) CreateRecord(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	var record models.AnswerRecord
 	if err := c.ShouldBindJSON(&record); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -35,41 +30,68 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 
 	record.AnsweredAt = time.Now().UnixMilli()
 
-	result, err := h.collection.InsertOne(ctx, record)
+	var recordID int
+	err := h.db.QueryRow(`
+		INSERT INTO records (user_id, question_id, user_answer, is_correct, time_spent, answered_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`,
+		record.UserID,
+		record.QuestionID,
+		record.UserAnswer,
+		record.IsCorrect,
+		record.TimeSpent,
+		record.AnsweredAt,
+	).Scan(&recordID)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	record.ID = result.InsertedID.(string)
+	record.ID = recordID
 	c.JSON(http.StatusCreated, record)
 }
 
 // GetRecords 获取用户答题记录
 func (h *RecordHandler) GetRecords(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	userID := c.Param("userId")
 
-	filter := bson.M{"userId": userID}
+	query := "SELECT id, user_id, question_id, user_answer, is_correct, time_spent, answered_at FROM records WHERE user_id = $1"
+	var args []interface{}
+	args = append(args, userID)
 
-	// 可选：按题目筛选
 	if questionID := c.Query("questionId"); questionID != "" {
-		filter["questionId"] = questionID
+		query += " AND question_id = $2"
+		args = append(args, questionID)
 	}
 
-	cursor, err := h.collection.Find(ctx, filter)
+	query += " ORDER BY answered_at DESC"
+
+	rows, err := h.db.Query(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	defer cursor.Close(ctx)
+	defer rows.Close()
 
 	var records []models.AnswerRecord
-	if err := cursor.All(ctx, &records); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	for rows.Next() {
+		var r models.AnswerRecord
+		err := rows.Scan(
+			&r.ID,
+			&r.UserID,
+			&r.QuestionID,
+			&r.UserAnswer,
+			&r.IsCorrect,
+			&r.TimeSpent,
+			&r.AnsweredAt,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		records = append(records, r)
 	}
 
 	if records == nil {
@@ -81,33 +103,19 @@ func (h *RecordHandler) GetRecords(c *gin.Context) {
 
 // GetStats 获取用户答题统计
 func (h *RecordHandler) GetStats(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	userID := c.Param("userId")
 
-	// 使用简单的统计查询
-	filter := bson.M{"userId": userID}
-	cursor, err := h.collection.Find(ctx, filter)
+	var total, correct int
+	err := h.db.QueryRow(`
+		SELECT
+			COUNT(*) as total,
+			COUNT(CASE WHEN is_correct THEN 1 END) as correct
+		FROM records WHERE user_id = $1
+	`, userID).Scan(&total, &correct)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-	defer cursor.Close(ctx)
-
-	var results []bson.M
-	if err := cursor.All(ctx, &results); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 计算统计
-	total := len(results)
-	correct := 0
-	for _, r := range results {
-		if r["isCorrect"] == true {
-			correct++
-		}
 	}
 
 	rate := 0.0

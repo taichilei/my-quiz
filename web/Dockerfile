@@ -4,19 +4,19 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 安装依赖
-COPY web/package*.json ./
-COPY web/package-lock.json ./
+COPY package*.json ./
+COPY package-lock.json ./
 RUN npm install --ignore-scripts
 
 # 复制源代码（排除测试文件）
-COPY web/src ./src
-COPY web/public ./public
-COPY web/index.html ./
-COPY web/vite.config.ts ./
-COPY web/tailwind.config.js ./
-COPY web/postcss.config.js ./
-COPY web/tsconfig.json ./
-COPY web/tsconfig.node.json ./
+COPY src ./src
+COPY public ./public
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY tsconfig.json ./
+COPY tsconfig.node.json ./
 
 # 删除测试文件
 RUN find ./src -name "*.test.ts" -delete && \
@@ -32,7 +32,7 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 复制 nginx 配置
-COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

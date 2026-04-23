@@ -3,10 +3,13 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# 复制源代码和 go.mod
+# 上下文是项目根目录，复制 server 目录下的所有文件
 COPY server/ ./
 
-# 直接获取所有依赖（会自动创建 go.sum）
+# 使用国内镜像加速下载
+ENV GOPROXY=https://goproxy.cn,direct
+
+# 下载依赖
 RUN go mod tidy && go mod download
 
 # 构建
@@ -28,6 +31,6 @@ EXPOSE 8080
 
 # 环境变量
 ENV PORT=8080
-ENV MONGO_URI=mongodb://mongo:27017
+ENV POSTGRES_URI=postgres://postgres:postgres@postgres:5432/my-quiz?sslmode=disable
 
 CMD ["./my-quiz-server"]

@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import type { Question } from '../types';
+import { recordApi } from '../api/client';
+
+const USER_ID = 'default-user';
 
 interface Props {
   questions: Question[];
@@ -42,15 +45,35 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
     setSelectedAnswer(answer);
     setShowResult(true);
 
-    if (checkAnswer(answer, currentQuestion.answer)) {
+    const correct = checkAnswer(answer, currentQuestion.answer);
+    if (correct) {
       setCorrectCount(c => c + 1);
     }
+
+    // 记录作答到服务器
+    recordApi.create({
+      userId: USER_ID,
+      questionId: currentQuestion.id,
+      userAnswer: answer as string,
+      isCorrect: correct,
+      answeredAt: Date.now(),
+    }).catch(err => console.error('Failed to record answer:', err));
   };
 
   const handleDontKnow = () => {
     if (showResult) return;
     setSelectedAnswer('');
     setShowResult(true);
+
+    // 记录作答（未作答也算错误）
+    const correct = checkAnswer('', currentQuestion.answer);
+    recordApi.create({
+      userId: USER_ID,
+      questionId: currentQuestion.id,
+      userAnswer: '',
+      isCorrect: correct,
+      answeredAt: Date.now(),
+    }).catch(err => console.error('Failed to record answer:', err));
   };
 
   const nextQuestion = () => {
@@ -335,9 +358,19 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
     if (selectedArr.length === 0 || showResult) return;
     setShowResult(true);
 
-    if (checkAnswer(selectedAnswer, currentQuestion.answer)) {
+    const correct = checkAnswer(selectedAnswer, currentQuestion.answer);
+    if (correct) {
       setCorrectCount(c => c + 1);
     }
+
+    // 记录作答到服务器
+    recordApi.create({
+      userId: USER_ID,
+      questionId: currentQuestion.id,
+      userAnswer: selectedAnswer as string,
+      isCorrect: correct,
+      answeredAt: Date.now(),
+    }).catch(err => console.error('Failed to record answer:', err));
   };
 
   return (

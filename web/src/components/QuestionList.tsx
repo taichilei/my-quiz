@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Question } from '../types';
-import { deleteQuestion, importQuestions, clearQuestions } from '../db';
+import { questionApi } from '../api/client';
 import { importQuestionBank, exportQuestionsJson } from '../utils/import';
 import QuestionForm from './QuestionForm';
 
@@ -45,17 +45,22 @@ export default function QuestionList({ questions, onUpdated }: Props) {
     try {
       const result = await importQuestionBank(file);
       if (result.success) {
-        await importQuestions(result.questions);
+        // 批量导入到服务器
+        let imported = 0;
+        for (const q of result.questions) {
+          await questionApi.create(q);
+          imported++;
+        }
         setMessage({
           type: 'success',
-          text: `成功导入 ${result.questions.length} 道题目`,
+          text: `成功导入 ${imported} 道题目`,
         });
         onUpdated();
       } else {
         setMessage({ type: 'error', text: result.errors.join('；') || '导入失败' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: '导入失败' });
+      setMessage({ type: 'error', text: '导入失败: ' + (error as Error).message });
     } finally {
       setImporting(false);
       if (fileInputRef.current) {
@@ -74,18 +79,10 @@ export default function QuestionList({ questions, onUpdated }: Props) {
     setMessage({ type: 'success', text: `成功导出 ${questions.length} 道题目` });
   };
 
-  // 清空
-  const handleClear = async () => {
-    if (!confirm('确定要清空所有题目吗？此操作不可恢复！')) return;
-    await clearQuestions();
-    setMessage({ type: 'success', text: '已清空所有题目' });
-    onUpdated();
-  };
-
   // 删除单题
   const handleDelete = async (id: string) => {
     if (confirm('确定删除这道题目吗？')) {
-      await deleteQuestion(id);
+      await questionApi.delete(id);
       onUpdated();
     }
   };
@@ -95,7 +92,7 @@ export default function QuestionList({ questions, onUpdated }: Props) {
     const examQuestions = examGroups.get(examName) || [];
     if (!confirm(`确定要删除「${examName}」的所有 ${examQuestions.length} 道题目吗？`)) return;
     for (const q of examQuestions) {
-      await deleteQuestion(q.id);
+      await questionApi.delete(q.id);
     }
     onUpdated();
   };

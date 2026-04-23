@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import ImportExport from './ImportExport';
 import WrongNotes from './WrongNotes';
-import { getQuestions, getStats, getWrongQuestions } from '../db';
+import { questionApi, recordApi } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
+
+const USER_ID = 'default-user';
 
 interface Props {
   onStartWrongNotes?: (questions: any[], title: string) => void;
@@ -23,13 +25,20 @@ export default function Profile({ onStartWrongNotes }: Props) {
 
   const loadStats = async () => {
     setLoading(true);
-    const [questions, wrongQuestions, statsData] = await Promise.all([
-      getQuestions(),
-      getWrongQuestions(),
-      getStats()
+    const [questions, statsData] = await Promise.all([
+      questionApi.list(),
+      recordApi.stats(USER_ID)
     ]);
     setTotalQuestions(questions.length);
-    setWrongCount(wrongQuestions.length);
+    // 统计错题数量 - 从记录中统计答错的题目
+    const records = await recordApi.list(USER_ID);
+    const wrongQuestionIds = new Set<string>();
+    records.forEach(r => {
+      if (!r.isCorrect) {
+        wrongQuestionIds.add(r.questionId);
+      }
+    });
+    setWrongCount(wrongQuestionIds.size);
     setStats(statsData);
     setLoading(false);
   };

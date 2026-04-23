@@ -7,49 +7,49 @@ body {
 }
 
 html.dark body {
-  @apply bg-gray-900;
+  background-color: #111827;
 }
 
 html.dark .bg-white {
-  @apply bg-gray-800 !important;
+  background-color: #1f2937 !important;
 }
 
 html.dark .bg-gray-50 {
-  @apply bg-gray-700 !important;
+  background-color: #374151 !important;
 }
 
 html.dark .bg-gray-100 {
-  @apply bg-gray-700 !important;
+  background-color: #374151 !important;
 }
 
 html.dark .border-gray-200 {
-  @apply border-gray-600 !important;
+  border-color: #4b5563 !important;
 }
 
 html.dark .text-gray-500 {
-  @apply text-gray-400 !important;
+  color: #9ca3af !important;
 }
 
 html.dark .text-gray-600 {
-  @apply text-gray-300 !important;
+  color: #d1d5db !important;
 }
 
 html.dark .text-gray-700 {
-  @apply text-gray-200 !important;
+  color: #e5e7eb !important;
 }
 
 html.dark .text-gray-800 {
-  @apply text-gray-100 !important;
+  color: #f3f4f6 !important;
 }
 
 html.dark .text-gray-400 {
-  @apply text-gray-500 !important;
+  color: #d1d5db !important;
 }
 
 html.dark .hover\:bg-gray-50:hover {
-  @apply bg-gray-700 !important;
+  background-color: #374151 !important;
 }
 
 html.dark .hover\:bg-gray-200:hover {
-  @apply bg-gray-600 !important;
+  background-color: #4b5563 !important;
 }
