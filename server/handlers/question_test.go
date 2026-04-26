@@ -30,6 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 	// 自动迁移所有表结构
 	err = db.AutoMigrate(
+		&models.Exam{},
 		&models.Question{},
 		&models.AnswerRecord{},
 		&models.QuizSession{},
@@ -77,32 +78,34 @@ func TestGetQuestions_WithData(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewQuestionHandler(db)
 
+	// Create exams first
+	exam1 := models.Exam{Name: "Test Exam", Year: 2021, Subject: "Test"}
+	db.Create(&exam1)
+	exam2 := models.Exam{Name: "Another Exam", Year: 2022, Subject: "Another"}
+	db.Create(&exam2)
+
 	// Insert test data
 	q1 := models.Question{
-		Type:    "single",
-		Content: "Test question 1",
-		Options: []string{"A", "B", "C", "D"},
-		Answer:  "A",
-		Exam: models.Exam{
-			Name:    "Test Exam",
-			Year:    2021,
-			Subject: "Test",
-		},
-		Difficulty: 1,
+		Type:        "single",
+		Content:     "Test question 1",
+		Options:     []string{"A", "B", "C", "D"},
+		Answer:      "A",
+		ExamID:      &exam1.ID,
+		Exam:        &exam1,
+		ExamOrder:   1,
+		Difficulty:  1,
 	}
 	db.Create(&q1)
 
 	q2 := models.Question{
-		Type:    "multiple",
-		Content: "Test question 2",
-		Options: []string{"X", "Y", "Z"},
-		Answer:  "XY",
-		Exam: models.Exam{
-			Name:    "Another Exam",
-			Year:    2022,
-			Subject: "Another",
-		},
-		Difficulty: 2,
+		Type:        "multiple",
+		Content:     "Test question 2",
+		Options:     []string{"X", "Y", "Z"},
+		Answer:      "XY",
+		ExamID:      &exam2.ID,
+		Exam:        &exam2,
+		ExamOrder:   1,
+		Difficulty:  2,
 	}
 	db.Create(&q2)
 
@@ -135,26 +138,32 @@ func TestGetQuestions_ByExam(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewQuestionHandler(db)
 
+	// Create exams
+	exam1 := models.Exam{Name: "Test Exam", Year: 2021, Subject: "Test"}
+	db.Create(&exam1)
+	exam2 := models.Exam{Name: "Another Exam", Year: 2022, Subject: "Another"}
+	db.Create(&exam2)
+
 	// Insert test data with different exams
 	q1 := models.Question{
-		Type:    "single",
-		Content: "Question in Test Exam",
-		Options: []string{"A", "B"},
-		Answer:  "A",
-		Exam: models.Exam{
-			Name: "Test Exam",
-		},
+		Type:        "single",
+		Content:     "Question in Test Exam",
+		Options:     []string{"A", "B"},
+		Answer:      "A",
+		ExamID:      &exam1.ID,
+		Exam:        &exam1,
+		ExamOrder:   1,
 	}
 	db.Create(&q1)
 
 	q2 := models.Question{
-		Type:    "single",
-		Content: "Question in Another Exam",
-		Options: []string{"A", "B"},
-		Answer:  "A",
-		Exam: models.Exam{
-			Name: "Another Exam",
-		},
+		Type:        "single",
+		Content:     "Question in Another Exam",
+		Options:     []string{"A", "B"},
+		Answer:      "A",
+		ExamID:      &exam2.ID,
+		Exam:        &exam2,
+		ExamOrder:   1,
 	}
 	db.Create(&q2)
 
@@ -190,14 +199,17 @@ func TestGetQuestion_Exists(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewQuestionHandler(db)
 
+	exam := models.Exam{Name: "Test", Year: 2021, Subject: "Test"}
+	db.Create(&exam)
+
 	q := models.Question{
-		Type:    "single",
-		Content: "Test question",
-		Options: []string{"A", "B", "C", "D"},
-		Answer:  "B",
-		Exam: models.Exam{
-			Name: "Test",
-		},
+		Type:        "single",
+		Content:     "Test question",
+		Options:     []string{"A", "B", "C", "D"},
+		Answer:      "B",
+		ExamID:      &exam.ID,
+		Exam:        &exam,
+		ExamOrder:   1,
 	}
 	db.Create(&q)
 
@@ -246,7 +258,7 @@ func TestGetQuestion_NotFound(t *testing.T) {
 	}
 }
 
-// TestGetQuestions_InvalidID tests getting with invalid ID format
+// TestGetQuestion_InvalidID tests getting with invalid ID format
 func TestGetQuestion_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupTestDB(t)
@@ -271,21 +283,33 @@ func TestGetExams(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewQuestionHandler(db)
 
-	// Insert questions with different exams
+	// Create exams
+	examA := models.Exam{Name: "Exam A", Year: 2021, Subject: "Math"}
+	db.Create(&examA)
+	examB := models.Exam{Name: "Exam B", Year: 2022, Subject: "Physics"}
+	db.Create(&examB)
+
+	// Insert questions
 	db.Create(&models.Question{
-		Type:    "single",
-		Content: "Q1",
-		Exam: models.Exam{Name: "Exam A", Year: 2021, Subject: "Math"},
+		Type:        "single",
+		Content:     "Q1",
+		ExamID:      &examA.ID,
+		Exam:        &examA,
+		ExamOrder:   1,
 	})
 	db.Create(&models.Question{
-		Type:    "single",
-		Content: "Q2",
-		Exam: models.Exam{Name: "Exam A", Year: 2021, Subject: "Math"}, // Same exam
+		Type:        "single",
+		Content:     "Q2",
+		ExamID:      &examA.ID,
+		Exam:        &examA,
+		ExamOrder:   2,
 	})
 	db.Create(&models.Question{
-		Type:    "single",
-		Content: "Q3",
-		Exam: models.Exam{Name: "Exam B", Year: 2022, Subject: "Physics"},
+		Type:        "single",
+		Content:     "Q3",
+		ExamID:      &examB.ID,
+		Exam:        &examB,
+		ExamOrder:   1,
 	})
 
 	r := gin.Default()
@@ -300,9 +324,8 @@ func TestGetExams(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	// Response should be a list of exams, even if we can't easily unmarshal the exact type,
-	// we just check it's valid JSON and not empty
-	var response []interface{}
+	// Response should be a list of exams
+	var response []models.ExamInfo
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
@@ -342,12 +365,19 @@ func TestDeleteQuestion(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewQuestionHandler(db)
 
+	// Create exam
+	exam := models.Exam{Name: "Test", Year: 2021, Subject: "Test"}
+	db.Create(&exam)
+
 	// Insert a question
 	q := models.Question{
-		Type:    "single",
-		Content: "To be deleted",
-		Options: []string{"A", "B"},
-		Answer:  "A",
+		Type:        "single",
+		Content:     "To be deleted",
+		Options:     []string{"A", "B"},
+		Answer:      "A",
+		ExamID:      &exam.ID,
+		Exam:        &exam,
+		ExamOrder:   1,
 	}
 	db.Create(&q)
 
