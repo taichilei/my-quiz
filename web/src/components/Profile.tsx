@@ -1,9 +1,9 @@
-import {useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import ImportExport from './ImportExport';
 import WrongNotes from './WrongNotes';
-import {questionApi, recordApi} from '../api/client';
-import {useTheme} from '../context/ThemeContext';
-import type {Question} from '../types';
+import { questionApi, recordApi } from '../api/client';
+import { useTheme } from '../context/ThemeContext';
+import type { Question } from '../types';
 
 const USER_ID = 'default-user';
 
@@ -17,12 +17,12 @@ interface Props {
   onStartWrongNotes: (questions: Question[], title: string) => void;
 }
 
-export default function Profile({onStartWrongNotes}: Props) {
+export default function Profile({ onStartWrongNotes }: Props) {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
-  const [stats, setStats] = useState<Stats>({total: 0, correct: 0, rate: 0});
+  const [stats, setStats] = useState<Stats>({ total: 0, correct: 0, rate: 0 });
   const [loading, setLoading] = useState(true);
-  const {theme, toggleTheme} = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   const loadStats = async () => {
     setLoading(true);
@@ -104,11 +104,11 @@ export default function Profile({onStartWrongNotes}: Props) {
 
       {/* 错题本入口 */}
       {!loading && wrongCount > 0 && (
-        <WrongNotes onStartQuiz={onStartWrongNotes}/>
+        <WrongNotes onStartQuiz={onStartWrongNotes} />
       )}
 
       {/* 导入导出 */}
-      <ImportExport onImported={handleImported}/>
+      <ImportExport onImported={handleImported} />
 
       {/* 应用信息 */}
       <div className="bg-white rounded-lg shadow p-6 text-center">

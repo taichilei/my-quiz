@@ -15,7 +15,20 @@ export type QuestionType = 'single' | 'multiple' | 'judge';
 export type Difficulty = 1 | 2 | 3;
 
 /**
- * 题目所属考试信息
+ * 考试信息（独立表）
+ */
+export interface Exam {
+  id: number; // 考试ID
+  name: string; // 考试名称，如"2017年下半年江苏省事业单位招聘考试"
+  year: number; // 年份，如 2017
+  subject: string; // 科目，如"综合知识和能力素质"
+  part: string; // 部分，如"客观题"、"专业知识"、"实务题"
+  createdAt: number; // 创建时间戳
+  updatedAt: number; // 更新时间戳
+}
+
+/**
+ * 题目所属考试信息（精简版，用于嵌入题目）
  */
 export interface ExamRef {
   name: string; // 考试名称，如"2017年下半年江苏省事业单位招聘考试"
@@ -53,7 +66,9 @@ export interface Question {
   options?: string[]; // 选项数组，顺序对应 A/B/C/D
 
   // ===== 可选字段 =====
-  exam?: ExamRef; // 所属考试信息
+  examId?: number; // 考试ID（外键）
+  exam?: Exam; // 关联的考试信息（预加载）
+  examOrder?: number; // 题目在考试中的序号
   explanation?: string; // 解析
   difficulty?: Difficulty; // 难度等级
   tags?: string[]; // 标签
@@ -132,6 +147,18 @@ export interface QuizSession {
   correctCount: number;
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * 考试列表项（带题目计数）
+ */
+export interface ExamInfo {
+  id: number;
+  name: string;
+  year: number;
+  subject: string;
+  part: string;
+  count: number; // 该考试题目数量
 }
 
 /**
