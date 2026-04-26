@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { Question } from '../types';
 import { recordApi } from '../api/client';
 
@@ -6,8 +6,20 @@ const USER_ID = 'default-user';
 
 interface Props {
   questions: Question[];
+  shuffle?: boolean; // 是否随机打乱题目顺序
+  // 状态从App层传入
+  currentIndex: number;
+  selectedAnswer: string | boolean;
+  showResult: boolean;
+  correctCount: number;
+  finished: boolean;
+  // 回调用于更新状态
+  onCurrentIndexChange: (index: number) => void;
+  onSelectedAnswerChange: (answer: string | boolean) => void;
+  onShowResultChange: (show: boolean) => void;
+  onCorrectCountChange: (count: number | ((prev: number) => number)) => void;
+  onFinishedChange: (finished: boolean) => void;
   onFinish: () => void;
-  shuffle?: boolean;  // 是否随机打乱题目顺序
 }
 
 // i18n: 判断题答案显示
@@ -16,13 +28,21 @@ const JUDGE_ANSWER_LABELS = {
   false: '错误',
 } as const;
 
-export default function QuizCard({ questions, onFinish, shuffle = false }: Props) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | boolean>('');
-  const [showResult, setShowResult] = useState(false);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [finished, setFinished] = useState(false);
-
+export default function QuizCard({
+  questions,
+  shuffle = false,
+  currentIndex,
+  selectedAnswer,
+  showResult,
+  correctCount,
+  finished,
+  onCurrentIndexChange,
+  onSelectedAnswerChange,
+  onShowResultChange,
+  onCorrectCountChange,
+  onFinishedChange,
+  onFinish,
+}: Props) {
   const displayQuestions = useMemo(() => {
     if (shuffle) {
       return [...questions].sort(() => Math.random() - 0.5);
@@ -33,72 +53,88 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
   const currentQuestion = displayQuestions[currentIndex];
 
   // 检查答案是否正确
-  const checkAnswer = (userAnswer: string | boolean, correctAnswer: string | boolean): boolean => {
-    if (currentQuestion.type === 'multiple' && typeof userAnswer === 'string' && typeof correctAnswer === 'string') {
-      return userAnswer.split(',').sort().join(',') === correctAnswer.split(',').sort().join(',');
+  const checkAnswer = (
+    userAnswer: string | boolean,
+    correctAnswer: string | boolean
+  ): boolean => {
+    if (
+      currentQuestion.type === 'multiple' &&
+      typeof userAnswer === 'string' &&
+      typeof correctAnswer === 'string'
+    ) {
+      return (
+        userAnswer.split(',').sort().join(',') ===
+        correctAnswer.split(',').sort().join(',')
+      );
     }
     return userAnswer === correctAnswer;
   };
 
   const handleSelect = (answer: string | boolean) => {
     if (showResult) return;
-    setSelectedAnswer(answer);
-    setShowResult(true);
+    onSelectedAnswerChange(answer);
+    onShowResultChange(true);
 
     const correct = checkAnswer(answer, currentQuestion.answer);
     if (correct) {
-      setCorrectCount(c => c + 1);
+      onCorrectCountChange((c) => c + 1);
     }
 
     // 记录作答到服务器
-    recordApi.create({
-      userId: USER_ID,
-      questionId: currentQuestion.id,
-      userAnswer: answer as string,
-      isCorrect: correct,
-      answeredAt: Date.now(),
-    }).catch(err => console.error('Failed to record answer:', err));
+    recordApi
+      .create({
+        userId: USER_ID,
+        questionId: currentQuestion.id,
+        userAnswer: answer as string,
+        isCorrect: correct,
+        answeredAt: Date.now(),
+      })
+      .catch((err) => console.error('Failed to record answer:', err));
   };
 
   const handleDontKnow = () => {
     if (showResult) return;
-    setSelectedAnswer('');
-    setShowResult(true);
+    onSelectedAnswerChange('');
+    onShowResultChange(true);
 
     // 记录作答（未作答也算错误）
     const correct = checkAnswer('', currentQuestion.answer);
-    recordApi.create({
-      userId: USER_ID,
-      questionId: currentQuestion.id,
-      userAnswer: '',
-      isCorrect: correct,
-      answeredAt: Date.now(),
-    }).catch(err => console.error('Failed to record answer:', err));
+    recordApi
+      .create({
+        userId: USER_ID,
+        questionId: currentQuestion.id,
+        userAnswer: '',
+        isCorrect: correct,
+        answeredAt: Date.now(),
+      })
+      .catch((err) => console.error('Failed to record answer:', err));
   };
 
   const nextQuestion = () => {
     if (currentIndex + 1 >= displayQuestions.length) {
-      setFinished(true);
+      onFinishedChange(true);
     } else {
-      setCurrentIndex(i => i + 1);
-      setSelectedAnswer('');
-      setShowResult(false);
+      onCurrentIndexChange(currentIndex + 1);
+      onSelectedAnswerChange('');
+      onShowResultChange(false);
     }
   };
 
   const handleFinish = () => {
-    setFinished(false);
-    setCurrentIndex(0);
-    setSelectedAnswer('');
-    setShowResult(false);
-    setCorrectCount(0);
+    onFinishedChange(false);
+    onCurrentIndexChange(0);
+    onSelectedAnswerChange('');
+    onShowResultChange(false);
+    onCorrectCountChange(0);
     onFinish();
   };
 
   // 格式化答案显示
   const formatAnswer = (answer: string | boolean): string => {
     if (typeof answer === 'boolean') {
-      return JUDGE_ANSWER_LABELS[String(answer) as keyof typeof JUDGE_ANSWER_LABELS];
+      return JUDGE_ANSWER_LABELS[
+        String(answer) as keyof typeof JUDGE_ANSWER_LABELS
+      ];
     }
     return answer;
   };
@@ -118,7 +154,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
         <p className="text-3xl font-bold text-blue-600 mb-2">
           {correctCount} / {displayQuestions.length}
         </p>
-        <p className="text-gray-500 mb-6">正确率：{Math.round(correctCount / displayQuestions.length * 100)}%</p>
+        <p className="text-gray-500 mb-6">
+          正确率：{Math.round((correctCount / displayQuestions.length) * 100)}%
+        </p>
         <button
           onClick={handleFinish}
           className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
@@ -135,7 +173,8 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
     judge: '判断题',
   };
 
-  const isCorrect = showResult && checkAnswer(selectedAnswer, currentQuestion.answer);
+  const isCorrect =
+    showResult && checkAnswer(selectedAnswer, currentQuestion.answer);
 
   // 判断题
   if (currentQuestion.type === 'judge') {
@@ -159,9 +198,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
             <div className="space-y-2">
               {currentQuestion.images.map((image, index) => (
                 <div key={index} className="rounded-lg overflow-hidden border">
-                  <img 
-                    src={image} 
-                    alt={`Question image ${index + 1}`} 
+                  <img
+                    src={image}
+                    alt={`Question image ${index + 1}`}
                     className="w-full h-auto object-contain"
                     style={{ maxHeight: '300px' }}
                   />
@@ -172,8 +211,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
         </div>
 
         <div className="space-y-2 mb-4">
-          {judgeOptions.map(opt => {
-            const optLabel = JUDGE_ANSWER_LABELS[String(opt) as 'true' | 'false'];
+          {judgeOptions.map((opt) => {
+            const optLabel =
+              JUDGE_ANSWER_LABELS[String(opt) as 'true' | 'false'];
             const isSelected = selectedAnswer === opt;
             const isCorrectAnswer = opt === correctAnswer;
 
@@ -198,7 +238,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
                 className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${btnClass}`}
               >
                 {optLabel}
-                {showResult && isCorrectAnswer && <span className="ml-2">✓</span>}
+                {showResult && isCorrectAnswer && (
+                  <span className="ml-2">✓</span>
+                )}
               </button>
             );
           })}
@@ -214,10 +256,17 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
         )}
 
         {showResult && (
-          <div className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
-            <p className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-              {selectedAnswer === '' ? '未作答，正确答案：' + formatAnswer(correctAnswer) :
-               isCorrect ? '回答正确！' : '回答错误，正确答案：' + formatAnswer(correctAnswer)}
+          <div
+            className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
+          >
+            <p
+              className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
+            >
+              {selectedAnswer === ''
+                ? '未作答，正确答案：' + formatAnswer(correctAnswer)
+                : isCorrect
+                  ? '回答正确！'
+                  : '回答错误，正确答案：' + formatAnswer(correctAnswer)}
             </p>
             {currentQuestion.explanation && (
               <p className="text-sm text-gray-500 mt-1">
@@ -258,9 +307,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
             <div className="space-y-2">
               {currentQuestion.images.map((image, index) => (
                 <div key={index} className="rounded-lg overflow-hidden border">
-                  <img 
-                    src={image} 
-                    alt={`Question image ${index + 1}`} 
+                  <img
+                    src={image}
+                    alt={`Question image ${index + 1}`}
                     className="w-full h-auto object-contain"
                     style={{ maxHeight: '300px' }}
                   />
@@ -297,7 +346,9 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
                 className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${btnClass}`}
               >
                 <span className="font-medium">{label}.</span> {opt}
-                {showResult && isCorrectAnswer && <span className="ml-2">✓</span>}
+                {showResult && isCorrectAnswer && (
+                  <span className="ml-2">✓</span>
+                )}
               </button>
             );
           })}
@@ -313,10 +364,18 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
         )}
 
         {showResult && (
-          <div className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
-            <p className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-              {selectedAnswer === '' ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer) :
-               isCorrect ? '回答正确！' : '回答错误，正确答案：' + formatAnswer(currentQuestion.answer)}
+          <div
+            className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
+          >
+            <p
+              className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
+            >
+              {selectedAnswer === ''
+                ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer)
+                : isCorrect
+                  ? '回答正确！'
+                  : '回答错误，正确答案：' +
+                    formatAnswer(currentQuestion.answer)}
             </p>
             {currentQuestion.explanation && (
               <p className="text-sm text-gray-500 mt-1">
@@ -339,38 +398,46 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
   }
 
   // 多选题
-  const selectedArr = typeof selectedAnswer === 'string' ? selectedAnswer.split(',').filter(Boolean) : [];
-  const correctArr = typeof currentQuestion.answer === 'string' ? currentQuestion.answer.split(',').filter(Boolean) : [];
+  const selectedArr =
+    typeof selectedAnswer === 'string'
+      ? selectedAnswer.split(',').filter(Boolean)
+      : [];
+  const correctArr =
+    typeof currentQuestion.answer === 'string'
+      ? currentQuestion.answer.split(',').filter(Boolean)
+      : [];
 
   const handleMultiSelect = (label: string) => {
     if (showResult) return;
 
     const newSelected = selectedArr.includes(label)
-      ? selectedArr.filter(s => s !== label)
+      ? selectedArr.filter((s) => s !== label)
       : [...selectedArr, label].sort();
 
     if (newSelected.length > 0) {
-      setSelectedAnswer(newSelected.join(','));
+      onSelectedAnswerChange(newSelected.join(','));
     }
   };
 
   const confirmMultiAnswer = () => {
     if (selectedArr.length === 0 || showResult) return;
-    setShowResult(true);
+    onShowResultChange(true);
 
     const correct = checkAnswer(selectedAnswer, currentQuestion.answer);
     if (correct) {
-      setCorrectCount(c => c + 1);
+      onCorrectCountChange((c) => c + 1);
     }
 
     // 记录作答到服务器
-    recordApi.create({
-      userId: USER_ID,
-      questionId: currentQuestion.id,
-      userAnswer: selectedAnswer as string,
-      isCorrect: correct,
-      answeredAt: Date.now(),
-    }).catch(err => console.error('Failed to record answer:', err));
+    recordApi
+      .create({
+        userId: USER_ID,
+        questionId: currentQuestion.id,
+        userAnswer: selectedAnswer as string,
+        isCorrect: correct,
+        answeredAt: Date.now(),
+      })
+      .catch((err) => console.error('Failed to record answer:', err));
   };
 
   return (
@@ -420,10 +487,17 @@ export default function QuizCard({ questions, onFinish, shuffle = false }: Props
       </div>
 
       {showResult && (
-        <div className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
-          <p className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-            {selectedAnswer === '' ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer) :
-             isCorrect ? '回答正确！' : '回答错误，正确答案：' + formatAnswer(currentQuestion.answer)}
+        <div
+          className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
+        >
+          <p
+            className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
+          >
+            {selectedAnswer === ''
+              ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer)
+              : isCorrect
+                ? '回答正确！'
+                : '回答错误，正确答案：' + formatAnswer(currentQuestion.answer)}
           </p>
           {currentQuestion.explanation && (
             <p className="text-sm text-gray-500 mt-1">

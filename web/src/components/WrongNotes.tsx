@@ -16,8 +16,8 @@ export default function WrongNotes({ onStartQuiz }: Props) {
     setLoading(true);
     // 获取所有错题ID
     const records = await recordApi.list(USER_ID);
-    const wrongQuestionIds = new Set<string>();
-    records.forEach(r => {
+    const wrongQuestionIds = new Set<number>();
+    records.forEach((r) => {
       if (!r.isCorrect) {
         wrongQuestionIds.add(r.questionId);
       }
@@ -25,7 +25,9 @@ export default function WrongNotes({ onStartQuiz }: Props) {
 
     // 获取所有题目并筛选出错题
     const allQuestions = await questionApi.list();
-    const wrongQuestions = allQuestions.filter(q => wrongQuestionIds.has(q.id));
+    const wrongQuestions = allQuestions.filter((q) =>
+      wrongQuestionIds.has(q.id)
+    );
 
     setWrongQuestions(wrongQuestions);
     setLoading(false);
@@ -51,8 +53,18 @@ export default function WrongNotes({ onStartQuiz }: Props) {
   if (wrongQuestions.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center">
-        <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="w-16 h-16 text-gray-300 mx-auto mb-3"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <p className="text-gray-500">暂无错题，做得不错！</p>
       </div>
@@ -63,7 +75,9 @@ export default function WrongNotes({ onStartQuiz }: Props) {
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">错题本</h3>
-        <span className="text-sm text-gray-500">共 {wrongQuestions.length} 题</span>
+        <span className="text-sm text-gray-500">
+          共 {wrongQuestions.length} 题
+        </span>
       </div>
 
       <button

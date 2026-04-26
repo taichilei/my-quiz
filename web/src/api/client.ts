@@ -1,3 +1,11 @@
+import type {
+  Question,
+  ExamRef,
+  AnswerRecord,
+  QuizSession,
+  Upload,
+} from '../types';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 async function request<T>(
@@ -15,11 +23,24 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Request failed' }));
     throw new Error(error.error || `HTTP ${response.status}`);
   }
 
   return response.json();
+}
+
+// Re-export types from central types file
+export type { Question, ExamRef as Exam, AnswerRecord, QuizSession };
+
+export interface ExamInfo {
+  name: string;
+  year: number;
+  subject: string;
+  part: string;
+  count: number;
 }
 
 // Question APIs
@@ -31,12 +52,13 @@ export const questionApi = {
     type?: string;
     tag?: string;
   }) => {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
+    const query = new URLSearchParams(
+      params as Record<string, string>
+    ).toString();
     return request<Question[]>(`/api/questions${query ? `?${query}` : ''}`);
   },
 
-  get: (id: string) =>
-    request<Question>(`/api/questions/${id}`),
+  get: (id: number) => request<Question>(`/api/questions/${id}`),
 
   create: (question: Omit<Question, 'id'>) =>
     request<Question>('/api/questions', {
@@ -44,13 +66,13 @@ export const questionApi = {
       body: JSON.stringify(question),
     }),
 
-  update: (id: string, question: Partial<Question>) =>
+  update: (id: number, question: Partial<Question>) =>
     request<Question>(`/api/questions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(question),
     }),
 
-  delete: (id: string) =>
+  delete: (id: number) =>
     request<{ message: string }>(`/api/questions/${id}`, {
       method: 'DELETE',
     }),
@@ -69,7 +91,7 @@ export const recordApi = {
       body: JSON.stringify(record),
     }),
 
-  list: (userId: string, questionId?: string) => {
+  list: (userId: string, questionId?: number) => {
     const query = questionId ? `?questionId=${questionId}` : '';
     return request<AnswerRecord[]>(`/api/records/${userId}${query}`);
   },
@@ -80,44 +102,61 @@ export const recordApi = {
     ),
 };
 
-// Types
-export interface Question {
-  id: string;
-  type: 'single' | 'multiple' | 'judge';
-  content: string;
-  options: string[];
-  answer: string;
-  explanation?: string;
-  difficulty: number;
-  tags?: string[];
-  exam?: Exam;
-  images?: string[];
-  createdAt: number;
-  updatedAt: number;
-}
+// Session APIs (unfinished quiz progress for cross-device sync)
+export const sessionApi = {
+  getCurrent: () => request<QuizSession>('/api/session/current'),
 
-export interface Exam {
-  name: string;
-  year: number;
-  subject: string;
-  part?: string;
-  order: number;
-}
+  upsert: (session: Omit<QuizSession, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<QuizSession>('/api/session', {
+      method: 'POST',
+      body: JSON.stringify(session),
+    }),
 
-export interface ExamInfo {
-  name: string;
-  year: number;
-  subject: string;
-  part: string;
-  count: number;
-}
+  deleteCurrent: () =>
+    request<{ message: string }>('/api/session/current', {
+      method: 'DELETE',
+    }),
+};
 
-export interface AnswerRecord {
-  id?: string;
-  userId: string;
-  questionId: string;
-  userAnswer: string;
-  isCorrect: boolean;
-  timeSpent?: number;
-  answeredAt: number;
-}
+// Upload APIs (file management)
+export const uploadApi = {
+  list: () => request<Upload[]>('/api/uploads'),
+
+  get: (id: number) => request<Upload>(`/api/uploads/${id}`),
+
+  upload: (formData: FormData) => {
+    return fetch(`${API_BASE}/api/uploads`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    }).then((res) => {
+      if (!res.ok) {
+        return res
+          .json()
+          .catch(() => ({ error: 'Upload failed' }))
+          .then((err) => {
+            throw new Error(err.error || 'Upload failed');
+          });
+      }
+      return res.json() as Promise<Upload>;
+    });
+  },
+
+  update: (id: number, data: { title: string; description: string }) =>
+    request<Upload>(`/api/uploads/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number, deleteQuestions: boolean) =>
+    request<{ message: string }>(
+      `/api/uploads/${id}?deleteQuestions=${deleteQuestions}`,
+      {
+        method: 'DELETE',
+      }
+    ),
+
+  download: (id: number) => {
+    window.open(`${API_BASE}/api/uploads/${id}/download`, '_blank');
+  },
+};

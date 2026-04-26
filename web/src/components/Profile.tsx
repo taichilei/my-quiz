@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import ImportExport from './ImportExport';
 import WrongNotes from './WrongNotes';
-import { questionApi, recordApi } from '../api/client';
-import { useTheme } from '../context/ThemeContext';
+import {questionApi, recordApi} from '../api/client';
+import {useTheme} from '../context/ThemeContext';
+import type {Question} from '../types';
 
 const USER_ID = 'default-user';
-
-interface Props {
-  onStartWrongNotes?: (questions: any[], title: string) => void;
-}
 
 interface Stats {
   total: number;
@@ -16,24 +13,28 @@ interface Stats {
   rate: number;
 }
 
-export default function Profile({ onStartWrongNotes }: Props) {
+interface Props {
+  onStartWrongNotes: (questions: Question[], title: string) => void;
+}
+
+export default function Profile({onStartWrongNotes}: Props) {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
-  const [stats, setStats] = useState<Stats>({ total: 0, correct: 0, rate: 0 });
+  const [stats, setStats] = useState<Stats>({total: 0, correct: 0, rate: 0});
   const [loading, setLoading] = useState(true);
-  const { theme, toggleTheme } = useTheme();
+  const {theme, toggleTheme} = useTheme();
 
   const loadStats = async () => {
     setLoading(true);
     const [questions, statsData] = await Promise.all([
       questionApi.list(),
-      recordApi.stats(USER_ID)
+      recordApi.stats(USER_ID),
     ]);
     setTotalQuestions(questions.length);
     // 统计错题数量 - 从记录中统计答错的题目
     const records = await recordApi.list(USER_ID);
-    const wrongQuestionIds = new Set<string>();
-    records.forEach(r => {
+    const wrongQuestionIds = new Set<number>();
+    records.forEach((r) => {
       if (!r.isCorrect) {
         wrongQuestionIds.add(r.questionId);
       }
@@ -44,12 +45,12 @@ export default function Profile({ onStartWrongNotes }: Props) {
   };
 
   const handleImported = () => {
-    loadStats();
+    void loadStats();
     // 刷新后会自动更新题库数量
   };
 
   useEffect(() => {
-    loadStats();
+    void loadStats();
   }, []);
 
   return (
@@ -62,11 +63,15 @@ export default function Profile({ onStartWrongNotes }: Props) {
         ) : (
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{totalQuestions}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {totalQuestions}
+              </div>
               <div className="text-sm text-gray-500">总题数</div>
             </div>
             <div className="text-center p-3 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{wrongCount}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {wrongCount}
+              </div>
               <div className="text-sm text-gray-500">错题数</div>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
@@ -99,17 +104,27 @@ export default function Profile({ onStartWrongNotes }: Props) {
 
       {/* 错题本入口 */}
       {!loading && wrongCount > 0 && (
-        <WrongNotes onStartQuiz={handleStartWrongNotes} />
+        <WrongNotes onStartQuiz={onStartWrongNotes}/>
       )}
 
       {/* 导入导出 */}
-      <ImportExport onImported={handleImported} />
+      <ImportExport onImported={handleImported}/>
 
       {/* 应用信息 */}
       <div className="bg-white rounded-lg shadow p-6 text-center">
         <div className="w-16 h-16 bg-blue-500 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <svg
+            className="w-10 h-10 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
         </div>
         <h1 className="text-xl font-bold text-gray-800">刷题助手</h1>
@@ -157,7 +172,9 @@ export default function Profile({ onStartWrongNotes }: Props) {
           </div>
           <div>
             <h3 className="font-medium text-gray-700">3. 题库格式</h3>
-            <p className="mt-1">支持 JSON 数组格式，每道题需包含 id、type、content、answer 等字段</p>
+            <p className="mt-1">
+              支持 JSON 数组格式，每道题需包含 id、type、content、answer 等字段
+            </p>
           </div>
         </div>
       </div>
@@ -169,7 +186,13 @@ export default function Profile({ onStartWrongNotes }: Props) {
           本应用为开源项目，旨在帮助考研、考公、考编等各类考试人群高效复习。
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          项目地址：<a href="https://github.com/your-username/my-quiz" className="text-blue-500 hover:underline">GitHub</a>
+          项目地址：
+          <a
+            href="https://github.com/taichilei/my-quiz"
+            className="text-blue-500 hover:underline"
+          >
+            GitHub
+          </a>
         </p>
       </div>
     </div>

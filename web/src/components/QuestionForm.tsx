@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Question, QuestionType, Difficulty, ExamRef } from '../types';
 import { questionApi } from '../api/client';
+import { uploadFile } from '../db';
 
 interface Props {
   onSaved: () => void;
@@ -8,7 +9,11 @@ interface Props {
   onCancel?: () => void;
 }
 
-export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Props) {
+export default function QuestionForm({
+  onSaved,
+  editingQuestion,
+  onCancel,
+}: Props) {
   const [type, setType] = useState<QuestionType>('single');
   const [content, setContent] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
@@ -52,7 +57,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
       }
       if (editingQuestion.exam) {
         setExamName(editingQuestion.exam.name);
-        setExamYear(editingQuestion.exam.year ? String(editingQuestion.exam.year) : '');
+        setExamYear(
+          editingQuestion.exam.year ? String(editingQuestion.exam.year) : ''
+        );
         setExamSubject(editingQuestion.exam.subject || '');
         setExamPart(editingQuestion.exam.part);
         setExamOrder(String(editingQuestion.exam.order));
@@ -104,7 +111,11 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
     if (!content.trim()) return;
     if (type === 'judge' && answer === '') return;
     if (type !== 'judge' && !answer) return;
-    if ((type === 'single' || type === 'multiple') && options.filter(o => o.trim()).length > 0 && options.some(o => !o.trim())) {
+    if (
+      (type === 'single' || type === 'multiple') &&
+      options.filter((o) => o.trim()).length > 0 &&
+      options.some((o) => !o.trim())
+    ) {
       alert('请填写所有选项');
       return;
     }
@@ -128,11 +139,19 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
         const updated: Partial<Question> = {
           type,
           content: content.trim(),
-          options: type === 'judge' ? undefined : options.map(o => o.trim()).filter(Boolean),
-          answer: type === 'judge' ? answer as boolean : answer as string,
+          options:
+            type === 'judge'
+              ? undefined
+              : options.map((o) => o.trim()).filter(Boolean),
+          answer: type === 'judge' ? (answer as boolean) : (answer as string),
           explanation: explanation.trim() || undefined,
           difficulty: difficulty || undefined,
-          tags: tags.trim() ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+          tags: tags.trim()
+            ? tags
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : undefined,
           images: currentImages.length > 0 ? currentImages : undefined,
           exam,
           updatedAt: Date.now(),
@@ -143,11 +162,16 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
         const question: Omit<Question, 'id'> = {
           type,
           content: content.trim(),
-          options: type === 'judge' ? undefined : options.map(o => o.trim()),
-          answer: type === 'judge' ? answer as boolean : answer as string,
+          options: type === 'judge' ? undefined : options.map((o) => o.trim()),
+          answer: type === 'judge' ? (answer as boolean) : (answer as string),
           explanation: explanation.trim() || undefined,
           difficulty: difficulty || undefined,
-          tags: tags.trim() ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+          tags: tags.trim()
+            ? tags
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : undefined,
           images: currentImages.length > 0 ? currentImages : undefined,
           exam,
           createdAt: Date.now(),
@@ -176,7 +200,7 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
     try {
       const uploaded = await uploadFile(file);
       setCurrentImages([...currentImages, uploaded.url]);
-    } catch (error) {
+    } catch {
       alert('上传失败，请重试');
     } finally {
       setUploading(false);
@@ -192,14 +216,19 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4 space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white rounded-lg shadow p-4 space-y-4"
+    >
       <h2 className="text-lg font-semibold text-gray-800">
         {editingQuestion ? '编辑题目' : '添加题目'}
       </h2>
 
       {/* 题目类型 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">题目类型</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          题目类型
+        </label>
         <select
           value={type}
           onChange={(e) => {
@@ -216,7 +245,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 题目内容 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">题目内容</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          题目内容
+        </label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -230,7 +261,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
       {/* 选项（非判断题） */}
       {type !== 'judge' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">选项</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            选项
+          </label>
           <div className="space-y-2">
             {options.map((opt, idx) => (
               <input
@@ -294,7 +327,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 解析 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">解析（可选）</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          解析（可选）
+        </label>
         <textarea
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
@@ -306,10 +341,16 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 难度 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">难度（可选）</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          难度（可选）
+        </label>
         <select
           value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value ? parseInt(e.target.value) as Difficulty : '')}
+          onChange={(e) =>
+            setDifficulty(
+              e.target.value ? (parseInt(e.target.value) as Difficulty) : ''
+            )
+          }
           className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">请选择</option>
@@ -321,7 +362,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 标签 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">标签（可选，逗号分隔）</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          标签（可选，逗号分隔）
+        </label>
         <input
           type="text"
           value={tags}
@@ -333,13 +376,22 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 图片（可选） */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">题目图片（可选）</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          题目图片（可选）
+        </label>
         {/* 已上传图片预览 */}
         {currentImages.length > 0 && (
           <div className="grid grid-cols-2 gap-2 mb-3">
             {currentImages.map((url, index) => (
-              <div key={index} className="relative border rounded-lg overflow-hidden">
-                <img src={url} alt={`图片 ${index + 1}`} className="w-full h-auto" />
+              <div
+                key={index}
+                className="relative border rounded-lg overflow-hidden"
+              >
+                <img
+                  src={url}
+                  alt={`图片 ${index + 1}`}
+                  className="w-full h-auto"
+                />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(index)}
@@ -365,7 +417,9 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
 
       {/* 考试信息 */}
       <details className="border rounded-lg p-3">
-        <summary className="cursor-pointer text-sm font-medium text-gray-700">考试信息（可选）</summary>
+        <summary className="cursor-pointer text-sm font-medium text-gray-700">
+          考试信息（可选）
+        </summary>
         <div className="mt-3 space-y-3">
           <input
             type="text"
@@ -425,7 +479,7 @@ export default function QuestionForm({ onSaved, editingQuestion, onCancel }: Pro
           disabled={saving}
           className={`${editingQuestion ? 'flex-1' : 'w-full'} bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors`}
         >
-          {saving ? '保存中...' : (editingQuestion ? '保存修改' : '添加题目')}
+          {saving ? '保存中...' : editingQuestion ? '保存修改' : '添加题目'}
         </button>
       </div>
     </form>

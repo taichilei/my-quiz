@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { importQuestionBank, exportQuestionsJson } from '../utils/import';
-import { getQuestions, importQuestions, clearQuestions, reloadQuestionBanks, uploadFile, getUploadedFiles, deleteUploadedFile, clearUploadedFiles } from '../db';
+import {
+  getQuestions,
+  importQuestions,
+  clearQuestions,
+  reloadQuestionBanks,
+  uploadFile,
+  getUploadedFiles,
+  deleteUploadedFile,
+  clearUploadedFiles,
+} from '../db';
 import type { UploadedFile } from '../types';
 
 interface Props {
@@ -9,7 +18,10 @@ interface Props {
 
 export default function ImportExport({ onImported }: Props) {
   const [importing, setImporting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,8 +80,11 @@ export default function ImportExport({ onImported }: Props) {
         return;
       }
       exportQuestionsJson(questions, `questions_${Date.now()}.json`);
-      setMessage({ type: 'success', text: `成功导出 ${questions.length} 道题目` });
-    } catch (error) {
+      setMessage({
+        type: 'success',
+        text: `成功导出 ${questions.length} 道题目`,
+      });
+    } catch {
       setMessage({ type: 'error', text: '导出失败' });
     }
   };
@@ -81,7 +96,7 @@ export default function ImportExport({ onImported }: Props) {
       await clearQuestions();
       setMessage({ type: 'success', text: '已清空所有题目' });
       onImported();
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: '清空失败' });
     }
   };
@@ -96,9 +111,9 @@ export default function ImportExport({ onImported }: Props) {
 
     try {
       const uploadedFile = await uploadFile(file);
-      setUploadedFiles(prev => [...prev, uploadedFile]);
+      setUploadedFiles((prev) => [...prev, uploadedFile]);
       setMessage({ type: 'success', text: `文件 "${file.name}" 上传成功` });
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: '文件上传失败' });
     } finally {
       setUploading(false);
@@ -114,9 +129,9 @@ export default function ImportExport({ onImported }: Props) {
 
     try {
       await deleteUploadedFile(id);
-      setUploadedFiles(prev => prev.filter(file => file.id !== id));
+      setUploadedFiles((prev) => prev.filter((file) => file.id !== id));
       setMessage({ type: 'success', text: '文件删除成功' });
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: '文件删除失败' });
     }
   };
@@ -129,7 +144,7 @@ export default function ImportExport({ onImported }: Props) {
       await clearUploadedFiles();
       setUploadedFiles([]);
       setMessage({ type: 'success', text: '已清空所有上传文件' });
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: '清空失败' });
     }
   };
@@ -143,7 +158,7 @@ export default function ImportExport({ onImported }: Props) {
       } else {
         setMessage({ type: 'success', text: '题库已是最新' });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: '刷新题库失败' });
     }
   };
@@ -205,24 +220,41 @@ export default function ImportExport({ onImported }: Props) {
           <h3 className="text-sm font-medium text-gray-700 mb-2">已上传文件</h3>
           <div className="space-y-2">
             {uploadedFiles.map((file) => (
-              <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+              >
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-800 truncate max-w-xs">{file.name}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate max-w-xs">
+                      {file.name}
+                    </p>
                     <p className="text-xs text-gray-500">
-                      {file.type || '未知类型'} · {Math.round(file.size / 1024)} KB · {new Date(file.createdAt).toLocaleString()}
+                      {file.type || '未知类型'} · {Math.round(file.size / 1024)}{' '}
+                      KB · {new Date(file.createdAt).toLocaleString()}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <a 
-                    href={file.url} 
-                    target="_blank" 
+                  <a
+                    href={file.url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 text-sm"
                   >

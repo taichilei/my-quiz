@@ -1,5 +1,9 @@
 import type { Question, UploadedFile } from './types';
-import { questionApi, recordApi, type AnswerRecord as APIAnswerRecord } from './api/client';
+import {
+  questionApi,
+  recordApi,
+  type AnswerRecord as APIAnswerRecord,
+} from './api/client';
 
 // 本地存储（降级使用）
 import localforage from 'localforage';
@@ -19,7 +23,10 @@ const UPLOADED_FILES_KEY = 'uploadedFiles';
 export async function getUserId(): Promise<string> {
   let userId = await localforage.getItem<string>(USER_ID_KEY);
   if (!userId) {
-    userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    userId =
+      'user_' +
+      Date.now().toString(36) +
+      Math.random().toString(36).substring(2);
     await localforage.setItem(USER_ID_KEY, userId);
   }
   return userId;
@@ -32,12 +39,11 @@ export async function getQuestions(): Promise<Question[]> {
   try {
     const questions = await questionApi.list();
     return questions as Question[];
-  } catch (e) {
-    // 降级到本地存储
-    console.warn('API unavailable, using local storage');
-    const questions = await localforage.getItem<Question[]>(QUESTIONS_KEY);
-    return questions || [];
-  }
+  } catch /* eslint-disable no-empty */ {}
+  // 降级到本地存储
+  console.warn('API unavailable, using local storage');
+  const questions = await localforage.getItem<Question[]>(QUESTIONS_KEY);
+  return questions || [];
 }
 
 /**
@@ -64,7 +70,7 @@ export async function initQuestions(): Promise<void> {
  */
 export async function saveQuestion(question: Question): Promise<void> {
   try {
-    await questionApi.create(question as any);
+    await questionApi.create(question as Omit<Question, 'id'>);
   } catch {
     // 降级到本地
     const questions = await getQuestions();
@@ -76,15 +82,23 @@ export async function saveQuestion(question: Question): Promise<void> {
 /**
  * 更新题目
  */
-export async function updateQuestion(id: string, updates: Partial<Question>): Promise<void> {
+export async function updateQuestion(
+  id: string,
+  updates: Partial<Question>
+): Promise<void> {
   try {
-    await questionApi.update(id, updates as any);
+    await questionApi.update(Number(id), updates);
   } catch {
     // 降级到本地
     const questions = await getQuestions();
-    const index = questions.findIndex(q => q.id === id);
+    const numId = Number(id);
+    const index = questions.findIndex((q) => q.id === numId);
     if (index !== -1) {
-      questions[index] = { ...questions[index], ...updates, updatedAt: Date.now() };
+      questions[index] = {
+        ...questions[index],
+        ...updates,
+        updatedAt: Date.now(),
+      };
       await localforage.setItem(QUESTIONS_KEY, questions);
     }
   }
@@ -95,11 +109,12 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
  */
 export async function deleteQuestion(id: string): Promise<void> {
   try {
-    await questionApi.delete(id);
+    await questionApi.delete(Number(id));
   } catch {
     // 降级到本地
     const questions = await getQuestions();
-    const filtered = questions.filter(q => q.id !== id);
+    const numId = Number(id);
+    const filtered = questions.filter((q) => q.id !== numId);
     await localforage.setItem(QUESTIONS_KEY, filtered);
   }
 }
@@ -111,14 +126,19 @@ export async function importQuestions(newQuestions: Question[]): Promise<void> {
   try {
     // 逐个创建
     for (const q of newQuestions) {
-      await questionApi.create(q as any);
+      await questionApi.create(q as Omit<Question, 'id'>);
     }
   } catch {
     // 降级到本地
     const questions = await getQuestions();
-    const existingIds = new Set(questions.map(q => q.id));
-    const uniqueNewQuestions = newQuestions.filter(q => !existingIds.has(q.id));
-    await localforage.setItem(QUESTIONS_KEY, [...questions, ...uniqueNewQuestions]);
+    const existingIds = new Set(questions.map((q) => q.id));
+    const uniqueNewQuestions = newQuestions.filter(
+      (q) => !existingIds.has(q.id)
+    );
+    await localforage.setItem(QUESTIONS_KEY, [
+      ...questions,
+      ...uniqueNewQuestions,
+    ]);
   }
 }
 
@@ -166,7 +186,7 @@ export async function recordAnswer(
   const userId = await getUserId();
   const record: APIAnswerRecord = {
     userId,
-    questionId,
+    questionId: Number(questionId),
     userAnswer: String(userAnswer),
     isCorrect,
     timeSpent,
@@ -177,12 +197,16 @@ export async function recordAnswer(
     await recordApi.create(record);
   } catch {
     // 降级到本地存储
+    const userId = await getUserId();
     const questions = await getQuestions();
-    const index = questions.findIndex(q => q.id === questionId);
+    const numId = Number(questionId);
+    const index = questions.findIndex((q) => q.id === numId);
     if (index !== -1) {
       const question = questions[index];
       question.answerHistory = question.answerHistory || [];
       question.answerHistory.push({
+        userId,
+        questionId: numId,
         answeredAt: Date.now(),
         userAnswer: String(userAnswer),
         isCorrect,
@@ -197,7 +221,11 @@ export async function recordAnswer(
 /**
  * 获取答题统计
  */
-export async function getStats(): Promise<{ total: number; correct: number; rate: number }> {
+export async function getStats(): Promise<{
+  total: number;
+  correct: number;
+  rate: number;
+}> {
   const userId = await getUserId();
   try {
     return await recordApi.stats(userId);
@@ -206,9 +234,9 @@ export async function getStats(): Promise<{ total: number; correct: number; rate
     const questions = await getQuestions();
     let total = 0;
     let correct = 0;
-    questions.forEach(q => {
+    questions.forEach((q) => {
       if (q.answerHistory) {
-        q.answerHistory.forEach(h => {
+        q.answerHistory.forEach((h) => {
           total++;
           if (h.isCorrect) correct++;
         });
@@ -224,8 +252,8 @@ export async function getStats(): Promise<{ total: number; correct: number; rate
  */
 export async function getWrongQuestions(): Promise<Question[]> {
   const all = await getQuestions();
-  return all.filter(q =>
-    q.answerHistory && q.answerHistory.some(h => !h.isCorrect)
+  return all.filter(
+    (q) => q.answerHistory && q.answerHistory.some((h) => !h.isCorrect)
   );
 }
 
@@ -234,7 +262,7 @@ export async function getWrongQuestions(): Promise<Question[]> {
  */
 export async function getFavoriteQuestions(): Promise<Question[]> {
   const all = await getQuestions();
-  return all.filter(q => q.favorite === true);
+  return all.filter((q) => q.favorite === true);
 }
 
 /**
@@ -243,10 +271,10 @@ export async function getFavoriteQuestions(): Promise<Question[]> {
 export async function uploadFile(file: File): Promise<UploadedFile> {
   // 生成唯一ID
   const id = generateId();
-  
+
   // 创建文件URL
   const url = URL.createObjectURL(file);
-  
+
   // 构建文件信息
   const uploadedFile: UploadedFile = {
     id,
@@ -255,14 +283,14 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
     size: file.size,
     url,
     createdAt: Date.now(),
-    sourceType: 'human' // 默认设置为人工来源
+    sourceType: 'human', // 默认设置为人工来源
   };
-  
+
   // 保存到本地存储
   const files = await getUploadedFiles();
   files.push(uploadedFile);
   await localforage.setItem(UPLOADED_FILES_KEY, files);
-  
+
   return uploadedFile;
 }
 
@@ -284,7 +312,7 @@ export async function getUploadedFiles(): Promise<UploadedFile[]> {
 export async function deleteUploadedFile(id: string): Promise<void> {
   try {
     const files = await getUploadedFiles();
-    const filteredFiles = files.filter(file => file.id !== id);
+    const filteredFiles = files.filter((file) => file.id !== id);
     await localforage.setItem(UPLOADED_FILES_KEY, filteredFiles);
   } catch {
     // 静默失败

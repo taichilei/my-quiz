@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Question, DataSourceType } from '../types';
+import type { Question, DataSourceType, QuizMode } from '../types';
 
 interface ExamGroup {
   name: string;
@@ -14,20 +14,40 @@ interface ExamGroup {
 
 interface Props {
   questions: Question[];
-  onSelectExam: (questions: Question[], examName?: string, part?: string) => void;
+  onSelectExam: (
+    questions: Question[],
+    examName?: string,
+    part?: string
+  ) => void;
   onSelectAll: (questions: Question[]) => void;
+  quizMode: QuizMode;
+  onQuizModeChange: (mode: QuizMode) => void;
 }
 
-export default function ExamSelector({ questions, onSelectExam, onSelectAll }: Props) {
-  const [selectedSourceType, setSelectedSourceType] = useState<DataSourceType | 'all'>('all');
+const modeLabels: Record<QuizMode, string> = {
+  unanswered: '只刷未做题',
+  wrong: '只刷错题',
+  all: '全部题目',
+};
+
+export default function ExamSelector({
+  questions,
+  onSelectExam,
+  onSelectAll,
+  quizMode,
+  onQuizModeChange,
+}: Props) {
+  const [selectedSourceType, setSelectedSourceType] = useState<
+    DataSourceType | 'all'
+  >('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
 
   // 获取所有标签
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    questions.forEach(q => {
+    questions.forEach((q) => {
       if (q.tags) {
-        q.tags.forEach(tag => tags.add(tag));
+        q.tags.forEach((tag) => tags.add(tag));
       }
     });
     return Array.from(tags);
@@ -37,10 +57,10 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
   const filteredQuestions = useMemo(() => {
     let filtered = questions;
     if (selectedSourceType !== 'all') {
-      filtered = filtered.filter(q => q.sourceType === selectedSourceType);
+      filtered = filtered.filter((q) => q.sourceType === selectedSourceType);
     }
     if (selectedTag !== 'all') {
-      filtered = filtered.filter(q => q.tags?.includes(selectedTag));
+      filtered = filtered.filter((q) => q.tags?.includes(selectedTag));
     }
     return filtered;
   }, [questions, selectedSourceType, selectedTag]);
@@ -49,7 +69,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
     const groups: Map<string, ExamGroup> = new Map();
     const noExamQuestions: Question[] = [];
 
-    filteredQuestions.forEach(q => {
+    filteredQuestions.forEach((q) => {
       if (!q.exam) {
         noExamQuestions.push(q);
         return;
@@ -71,7 +91,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
 
       // 按部分分组
       const partName = q.exam.part || '未分类';
-      const existingPart = group.parts.find(p => p.part === partName);
+      const existingPart = group.parts.find((p) => p.part === partName);
       if (existingPart) {
         existingPart.count++;
       } else {
@@ -91,7 +111,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
 
   const handleSelectPart = (examName: string, part: string) => {
     const filtered = filteredQuestions.filter(
-      q => q.exam?.name === examName && q.exam?.part === part
+      (q) => q.exam?.name === examName && q.exam?.part === part
     );
     // 按 order 排序
     filtered.sort((a, b) => (a.exam?.order || 0) - (b.exam?.order || 0));
@@ -99,9 +119,11 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
   };
 
   const handleSelectExam = (examName: string) => {
-    const filtered = filteredQuestions.filter(q => q.exam?.name === examName);
+    const filtered = filteredQuestions.filter((q) => q.exam?.name === examName);
     filtered.sort((a, b) => {
-      const partCompare = (a.exam?.part || '').localeCompare(b.exam?.part || '');
+      const partCompare = (a.exam?.part || '').localeCompare(
+        b.exam?.part || ''
+      );
       if (partCompare !== 0) return partCompare;
       return (a.exam?.order || 0) - (b.exam?.order || 0);
     });
@@ -115,7 +137,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
       multiple: 0,
       judge: 0,
     };
-    filteredQuestions.forEach(q => {
+    filteredQuestions.forEach((q) => {
       typeCount[q.type]++;
     });
     return typeCount;
@@ -123,6 +145,26 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
 
   return (
     <div className="space-y-4">
+      {/* 刷题模式 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">刷题模式</h3>
+        <div className="flex gap-2">
+          {(['unanswered', 'wrong', 'all'] as QuizMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => onQuizModeChange(mode)}
+              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                quizMode === mode
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {modeLabels[mode]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 数据来源过滤器 */}
       <div className="bg-white rounded-lg shadow p-4">
         <h3 className="text-sm font-medium text-gray-700 mb-3">数据来源</h3>
@@ -175,7 +217,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
             >
               全部
             </button>
-            {allTags.map(tag => (
+            {allTags.map((tag) => (
               <button
                 key={tag}
                 onClick={() => setSelectedTag(tag)}
@@ -216,8 +258,11 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
       {examGroups.groups.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-medium text-gray-500 px-1">按试卷练习</h2>
-          {examGroups.groups.map(group => (
-            <div key={group.name} className="bg-white rounded-lg shadow overflow-hidden">
+          {examGroups.groups.map((group) => (
+            <div
+              key={group.name}
+              className="bg-white rounded-lg shadow overflow-hidden"
+            >
               {/* 试卷标题 */}
               <button
                 onClick={() => handleSelectExam(group.name)}
@@ -227,7 +272,9 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
                   <div>
                     <h3 className="font-medium text-gray-800">{group.name}</h3>
                     {group.subject && (
-                      <p className="text-xs text-gray-400 mt-0.5">{group.subject}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {group.subject}
+                      </p>
                     )}
                   </div>
                   <div className="text-lg font-bold text-blue-500">
@@ -238,7 +285,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
 
               {/* 部分列表 */}
               <div className="divide-y">
-                {group.parts.map(p => (
+                {group.parts.map((p) => (
                   <button
                     key={p.part}
                     onClick={() => handleSelectPart(group.name, p.part)}
@@ -259,7 +306,7 @@ export default function ExamSelector({ questions, onSelectExam, onSelectAll }: P
         <div className="bg-white rounded-lg shadow p-4">
           <button
             onClick={() => {
-              const filtered = questions.filter(q => !q.exam);
+              const filtered = questions.filter((q) => !q.exam);
               onSelectExam(filtered, '未分类题目');
             }}
             className="w-full text-left"
