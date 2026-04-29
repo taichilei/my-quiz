@@ -5,8 +5,21 @@ import type {
   QuizSession,
   Upload,
 } from '../types';
+import { getDeviceId, APP_VERSION, CLIENT_TYPE } from '../utils/device';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+/**
+ * 多端信息 Header
+ * 用于后端识别请求来自哪个端、哪个版本
+ */
+function getClientHeaders(): Record<string, string> {
+  return {
+    'X-Client-Type': CLIENT_TYPE,
+    'X-App-Version': APP_VERSION,
+    'X-Device-Id': getDeviceId(),
+  };
+}
 
 async function request<T>(
   endpoint: string,
@@ -18,6 +31,7 @@ async function request<T>(
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getClientHeaders(),
       ...options.headers,
     },
   });

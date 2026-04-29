@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"my-quiz/async"
 	"my-quiz/config"
 	"my-quiz/handlers"
 	"my-quiz/middleware"
@@ -14,6 +15,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+var _ = async.Submit // 确保 async 包被导入（init 自动初始化）
 
 func main() {
 	// 加载配置
@@ -39,6 +42,9 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// 多端信息解析中间件（全局生效）
+	r.Use(middleware.ClientInfoMiddleware())
+
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -56,6 +62,18 @@ func main() {
 		authGroup := api.Group("/")
 		authGroup.Use(middleware.JWTAuth())
 		{
+			// 调试接口：返回当前请求的客户端信息
+			authGroup.GET("/debug/client-info", func(c *gin.Context) {
+				client := middleware.GetClient(c)
+				c.JSON(200, gin.H{
+					"type":      client.Type,
+					"version":   client.Version,
+					"device_id": client.DeviceID,
+					"platform":  client.Platform,
+					"is_mobile": client.IsMobile,
+				})
+			})
+
 			// 用户信息接口
 			userHandler := handlers.NewUserHandler(db)
 			authGroup.GET("/user/me", userHandler.GetMe)
