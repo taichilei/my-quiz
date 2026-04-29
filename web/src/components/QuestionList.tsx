@@ -21,7 +21,7 @@ function groupByExam(questions: Question[]): Map<string, Question[]> {
   });
   // 按试卷内题目顺序排序
   map.forEach((list) => {
-    list.sort((a, b) => (a.exam?.order || 0) - (b.exam?.order || 0));
+    list.sort((a, b) => (a.examOrder || 0) - (b.examOrder || 0));
   });
   return map;
 }

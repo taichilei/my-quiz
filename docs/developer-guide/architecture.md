@@ -8,9 +8,9 @@
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| React | 18.2 | UI 框架 |
-| TypeScript | 5.2 | 类型安全 |
-| Vite | 5.0 | 构建工具 |
+| React | 18 | UI 框架 |
+| TypeScript | 5.x | 类型安全 |
+| Vite | 5.x | 构建工具 |
 
 ### UI 与样式
 
@@ -23,9 +23,15 @@
 
 | 技术 | 用途 |
 |------|------|
-| IndexedDB | 浏览器数据库（本地存储） |
-| localforage | IndexedDB 封装库 |
-| MongoDB | 后端数据库（服务器模式） |
+| localStorage | 保存未完成刷题进度（前端） |
+| PostgreSQL | 后端主数据库（题目、答题记录） |
+
+### 测试
+
+| 技术 | 用途 |
+|------|------|
+| Vitest | 单元测试框架 |
+| React Testing Library | React 组件测试 |
 
 ### PWA
 
@@ -39,21 +45,41 @@
 ```
 web/
 ├── src/
-│   ├── components/           # React 组件
-│   │   ├── App.tsx           # 主应用（路由/状态）
-│   │   ├── QuizCard.tsx      # 刷题卡片
-│   │   ├── QuestionList.tsx  # 题目列表
-│   │   ├── QuestionForm.tsx  # 添加题目表单
-│   │   └── ImportExport.tsx  # 导入导出组件
+│   ├── App.tsx             # 主应用（Tab 路由/全局状态管理）
+│   ├── main.tsx            # 应用入口
+│   ├── index.css           # 全局样式
+│   ├── types.ts            # 所有 TypeScript 类型定义
 │   │
-│   ├── types.ts              # TypeScript 类型定义
-│   ├── db.ts                 # 数据库操作封装
-│   ├── utils/                # 工具函数
-│   │   └── import.ts         # 导入解析/验证
-│   ├── data/                 # 初始数据
-│   │   └── questions.ts      # 示例题目
-│   ├── main.tsx              # 应用入口
-│   └── index.css             # 全局样式
+│   ├── api/                # 后端 API 客户端
+│   │   ├── client.ts       # API 封装（request、questionApi、examApi、recordApi）
+│   │   └── client.test.ts  # API 单元测试
+│   │
+│   ├── components/         # React 组件
+│   │   ├── QuizCard.tsx           # 刷题卡片
+│   │   ├── QuizCard.test.tsx      # 刷题卡片测试
+│   │   ├── QuestionList.tsx       # 题目列表管理
+│   │   ├── QuestionForm.tsx       # 添加/编辑题目表单
+│   │   ├── ExamSelector.tsx       # 按考试分类选择题目
+│   │   ├── ContinueQuizModal.tsx  # 继续刷题弹窗
+│   │   ├── WrongNotes.tsx         # 错题本
+│   │   ├── Profile.tsx            # 用户统计信息、深色模式、导入导出
+│   │   └── ImportExport.tsx       # 导入导出组件
+│   │
+│   ├── context/            # React Context
+│   │   └── ThemeContext.tsx  # 深色主题切换
+│   │
+│   ├── utils/              # 工具函数
+│   │   ├── import.ts       # 题目导入解析/验证
+│   │   └── progressStorage.ts  # 未完成进度存储
+│   │
+│   ├── data/               # 初始数据
+│   │   └── questions.ts    # 示例题目
+│   │
+│   ├── test/               # 测试配置
+│   │   └── setup.ts        # 测试环境设置
+│   │
+│   ├── db.ts               # 兼容旧版 IndexedDB（已弃用，保留用于数据迁移）
+│   └── db.test.ts          # db 单元测试
 │
 ├── public/                   # 静态资源
 │   ├── manifest.json         # PWA 配置
@@ -93,27 +119,51 @@ export interface ExamRef {
   order: number;
   // ...
 }
+
+// 作答记录
+export interface AnswerRecord {
+  id: string;
+  userId: string;
+  questionId: string;
+  userAnswer: string | boolean;
+  isCorrect: boolean;
+  answeredAt: number;
+}
+
+// 保存的未完成刷题进度
+export interface SavedQuizProgress {
+  isQuizActive: boolean;
+  quizQuestionIds: string[];
+  quizTitle: string;
+  currentIndex: number;
+  selectedAnswer?: string | boolean;
+  showResult: boolean;
+  correctCount: number;
+  savedAt: number;
+}
 ```
 
-### 2. db.ts - 数据库操作
+### 2. api/client.ts - API 客户端封装
 
-封装 IndexedDB 操作：
+封装所有与后端的 REST API 通信：
 
 ```typescript
-// 获取所有题目
-export async function getQuestions(): Promise<Question[]>
+// 获取题目列表
+questionApi.list: (params?) => Promise<Question[]>
 
-// 保存题目
-export async function saveQuestion(question: Question): Promise<void>
+// CRUD operations
+questionApi.create: (question) => Promise<Question>
+questionApi.update: (id, question) => Promise<Question>
+questionApi.delete: (id) => Promise<{ message: string }>
 
-// 导入题目（批量）
-export async function importQuestions(questions: Question[]): Promise<void>
+// 获取考试列表
+examApi.list: () => Promise<ExamInfo[]>
 
-// 导出题目
-export async function exportQuestions(): Promise<Question[]>
+// 创建答题记录
+recordApi.create: (record) => Promise<AnswerRecord>
 
-// 记录作答
-export async function recordAnswer(id: string, answer: string | boolean, isCorrect: boolean): Promise<void>
+// 获取用户答题统计
+recordApi.stats: (userId) => Promise<{ total, correct, rate }>
 ```
 
 ### 3. components/ - UI 组件
@@ -121,41 +171,72 @@ export async function recordAnswer(id: string, answer: string | boolean, isCorre
 #### App.tsx
 
 主应用组件，负责：
-- 页面路由（Tab 切换）
+- 底部 Tab 路由切换（刷题 / 题库 / 我的）
 - 题目数据加载
-- 全局布局
+- 全局刷题状态管理（currentIndex, selectedAnswer, showResult, correctCount 等）
+- 自动保存未完成进度到 localStorage
+- 恢复进度弹窗提示
 
 #### QuizCard.tsx
 
 刷题卡片组件：
-- 显示题目内容和选项
-- 处理用户选择
-- 显示答案解析
+- 显示题目内容、图片、选项
+- 处理用户选择（单选/多选/判断）
+- 显示答案解析和对错
 - 统计正确率
+- 点击下一题
+
+#### ExamSelector.tsx
+
+试卷选择器：
+- 按考试分组显示题目
+- 支持选择整份试卷开始刷题
+- 支持选择"全部题目"随机刷题
 
 #### QuestionList.tsx
 
-题目列表组件：
-- 显示所有题目
-- 支持删除操作
-- 显示题目详情
+题目列表：
+- 显示所有题目（按考试分组）
+- 支持删除题目
+- 支持编辑题目
 
 #### QuestionForm.tsx
 
-添加题目表单：
+添加/编辑题目表单：
+- 支持单选/多选/判断三种题型
 - 表单验证
-- 支持所有题型
-- 可选字段（难度、标签、考试信息）
+- 可选字段：难度、标签、考试信息、解析
+
+#### ContinueQuizModal.tsx
+
+继续刷题弹窗：
+- 检测到未完成进度时弹出
+- 显示上次刷题到第几题
+- 提供"取消"和"继续刷题"选项
+
+#### WrongNotes.tsx
+
+错题本：
+- 显示用户所有答错的题目
+- 支持一键开始错题重刷
+
+#### Profile.tsx
+
+个人中心：
+- 显示答题统计（总题数、正确率）
+- 深色模式切换
+- 导入导出功能入口
 
 #### ImportExport.tsx
 
-导入导出组件：
-- 文件选择
-- JSON 解析
-- 导出下载
-- 清空数据
+导入导出：
+- 支持 JSON 文件导入题目
+- 支持导出所有题目为 JSON
+- 支持清空数据
 
-### 4. utils/import.ts - 导入工具
+### 4. utils/ - 工具函数
+
+#### import.ts
 
 ```typescript
 // 验证题目格式
@@ -168,6 +249,27 @@ export async function importQuestionBank(file: File): Promise<ImportResult>
 export function exportQuestionsJson(questions: Question[], filename: string): void
 ```
 
+#### progressStorage.ts
+
+```typescript
+// 保存未完成刷题进度到 localStorage
+export function saveQuizProgress(progress: Omit<SavedQuizProgress, 'savedAt'>): void
+
+// 读取保存的进度
+export function getSavedQuizProgress(): SavedQuizProgress | null
+
+// 清除保存的进度
+export function clearQuizProgress(): void
+
+// 检查是否有未完成进度
+export function hasUnfinishedProgress(): boolean
+```
+
+### 5. context/ThemeContext.tsx
+
+- 提供深色/浅色主题切换功能
+- 主题偏好保存到 localStorage
+
 ## 数据流
 
 ### 初始化流程
@@ -177,25 +279,58 @@ App.tsx
   │
   ├── useEffect(() => loadQuestions())
   │     │
-  │     ├── initQuestions()     // 首次加载示例数据
-  │     └── getQuestions()      // 获取所有题目
+  │     └── questionApi.list()       // 从后端 API 获取所有题目
   │
-  └── setQuestions(data)        // 更新状态
+  ├── setQuestions(data)              // 更新状态
+  │
+  └── 检查 localStorage
+       └── 如果有未完成进度 → 弹出"继续刷题"弹窗
 ```
 
 ### 刷题流程
 
 ```
-QuizCard.tsx
+App 全局维护状态：
+  - quizQuestions: 当前刷题题目数组
+  - currentIndex: 当前题号
+  - selectedAnswer: 用户已选答案
+  - showResult: 是否显示结果
+  - correctCount: 答对题数
+  - finished: 是否完成
+
+↓
+
+QuizCard.tsx 通过 props 接收状态
   │
   ├── 用户点击选项
   │     │
-  │     ├── handleSelect()      // 记录选择
-  │     └── setShowResult()     // 显示结果
+  │     ├── onSelectedAnswerChange(answer)  // 回调给 App
+  │     ├── onShowResultChange(true)
+  │     ├── 检查是否正确 → onCorrectCountChange
+  │     └── 调用 recordApi.create() 记录作答到后端
   │
-  └── 下一题
+  └── 用户点击"下一题"
         │
-        └── setCurrentIndex()   // 更新索引
+        └── onCurrentIndexChange(currentIndex + 1)  // App 更新索引
+            ↓
+            清空 selectedAnswer，showResult = false
+```
+
+### 自动保存流程
+
+```
+用户刷新/关闭页面 → 触发 beforeunload 事件
+  ↓
+如果 isQuizActive && !finished → 保存当前状态到 localStorage
+  ↓
+保存内容：题目ID列表、当前索引、正确题数等
+  ↓
+用户重新打开应用 → App 初始化时检查 localStorage
+  ↓
+如果有未完成进度 → 弹出 ContinueQuizModal
+  ↓
+用户点击"继续" → 根据题目ID从全量题目恢复数组，恢复所有状态
+用户点击"取消" → 清除 localStorage，正常启动
 ```
 
 ### 导入流程
@@ -206,19 +341,34 @@ ImportExport.tsx
   ├── 用户选择文件
   │     │
   │     └── importQuestionBank(file)
-  │           │
-  │           ├── parseJsonFile()      // 解析 JSON
-  │           ├── validateQuestion()   // 验证格式
-  │           └── return { questions, errors }
+  │               │
+  │               ├── parseJsonFile()      // 解析 JSON
+  │               ├── validateQuestion()   // 验证格式
+  │               └── return { questions, errors }
   │
-  └── importQuestions(questions)  // 存入数据库
+  └── 遍历调用 questionApi.create()   // 逐个创建到后端
 ```
+
+## 状态管理设计
+
+### 为什么把刷题状态提升到 App 层？
+
+1. **方便自动保存进度**：所有状态都在 App，可以一次性保存到 localStorage
+2. **方便恢复进度**：从 localStorage 恢复后，直接设置 App 状态即可
+3. **组件职责清晰**：QuizCard 只负责渲染和用户交互，状态由父组件管理
+
+### 保存进度时为什么只存题目 ID 列表？
+
+- **节省空间**：localStorage 容量有限，不存储完整题目对象
+- **避免数据不一致**：恢复时从后端重新获取最新题目数据
+- **处理题目删除**：恢复时自动过滤已删除的题目，不影响进度恢复
 
 ## 构建与部署
 
 ### 开发模式
 
 ```bash
+cd web
 npm run dev
 ```
 
@@ -236,310 +386,87 @@ npm run build
 - Vite 打包
 - 输出到 `dist/` 目录
 
+### 运行测试
+
+```bash
+npm run test          # 运行所有测试
+npm run test:watch    # 监听模式
+npx vitest run <file> # 运行单个测试
+```
+
 ### 预览构建结果
 
 ```bash
 npm run preview
 ```
 
+### Docker 部署
+
+整个项目（PostgreSQL + 后端 + 前端）使用 Docker Compose 部署：
+
+```bash
+make build   # 构建镜像
+make up      # 启动所有服务
+```
+
+详见 [docker-compose.yml](../../../docker-compose.yml)
+
 ## 扩展指南
 
 ### 添加新题型
 
-1. 更新 `types.ts`：
+1. 更新 `web/src/types.ts`：
 ```typescript
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill';
 ```
 
-2. 更新 `QuizCard.tsx`：
+2. 更新 `web/src/components/QuizCard.tsx`：
 ```tsx
 if (currentQuestion.type === 'fill') {
   // 填空题渲染逻辑
 }
 ```
 
-3. 更新 `QuestionForm.tsx`：
+3. 更新 `web/src/components/QuestionForm.tsx`：
 ```tsx
 <option value="fill">填空题</option>
 ```
 
+4. 后端无需修改，使用动态 JSON 兼容
+
 ### 添加新功能
 
 1. 在 `src/components/` 创建新组件
-2. 在 `App.tsx` 添加路由
-3. 如需数据持久化，在 `db.ts` 添加方法
+2. 在 `App.tsx` 添加 Tab 路由或入口
+3. 如需后端 API，在 `server/handlers/` 添加处理器
+4. 在 `web/src/api/client.ts` 添加 API 客户端方法
 
 ## 性能优化
 
 ### 当前优化
 
-- 使用 `useMemo` 缓存计算结果
-- IndexedDB 异步存储
+- 使用 `useMemo` 缓存打乱题目顺序的计算结果
+- 后端分页支持（API 层面）
 - Service Worker 缓存静态资源
+- PWA 支持离线使用
 
 ### 可选优化
 
 - 虚拟列表（题目列表过长时）
-- 分页加载
-- Web Worker 处理大量数据
+- 图片懒加载
+- Web Worker 处理大量数据导入
 
-## MongoDB 配置与使用
+## 项目演进
 
-### 配置文件
+项目架构经历了两个阶段：
 
-服务器 MongoDB 配置位于 `server/config/config.go`：
+1. **v0.x** - 纯前端方案：React + IndexedDB，数据存储在浏览器本地，不支持多设备同步
+2. **v1.x** - 前后端分离方案：React + Go + PostgreSQL，数据持久化在后端，支持多设备同步
 
-```go
-package config
+### 未来迭代规划 (Roadmap)
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"time"
+为了进一步提升系统的专业性，后续将围绕以下核心点进行迭代（详见 [roadmap.md](../roadmap.md)）：
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-)
-
-type Config struct {
-	MongoURI string
-	DBName   string
-}
-
-func Load() *Config {
-	return &Config{
-		MongoURI: "mongodb://localhost:27017",
-		DBName:   "my-quiz",
-	}
-}
-
-func (c *Config) Connect() (*mongo.Database, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(c.MongoURI))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MongoDB: %v", err)
-	}
-
-	// 检查连接
-	if err := client.Ping(ctx, nil); err != nil {
-		return nil, fmt.Errorf("failed to ping MongoDB: %v", err)
-	}
-
-	log.Println("Connected to MongoDB")
-	return client.Database(c.DBName), nil
-}
-```
-
-### 启动 MongoDB
-
-使用提供的脚本启动 MongoDB Docker 容器：
-
-```bash
-# 在 server/scripts 目录下执行
-./start-mongo.sh
-```
-
-启动脚本内容：
-
-```bash
-#!/bin/bash
-
-# 启动 MongoDB 的 Docker 命令
-echo "Starting MongoDB with Docker..."
-
-docker run -d -p 27017:27017 --name mongodb \
-  -e MONGO_INITDB_ROOT_USERNAME=admin \
-  -e MONGO_INITDB_ROOT_PASSWORD=password \
-  mongo
-
-echo "MongoDB started. Connection string: mongodb://admin:password@localhost:27017"
-```
-
-### 数据库结构
-
-#### 集合（Collections）
-
-1. **questions** - 存储题目数据
-   - 字段：与 `Question` 接口对应
-   - 索引：`_id` (默认), `exam.name`, `type`, `difficulty`
-
-2. **answer_records** - 存储作答记录
-   - 字段：`userId`, `questionId`, `userAnswer`, `isCorrect`, `timeSpent`, `answeredAt`
-   - 索引：`userId`, `questionId`, `answeredAt`
-
-### 连接字符串
-
-- 开发环境：`mongodb://localhost:27017`
-- Docker 环境：`mongodb://admin:password@localhost:27017`
-- 远程 MongoDB：`mongodb://username:password@192.168.2.117:27017`
-
-### 远程 MongoDB 配置（Docker 部署）
-
-#### 前置步骤：配置 SSH 免密登录
-
-**在本地机器上执行：**
-
-1. **生成 SSH 密钥对**（如果还没有）
-   ```bash
-   ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
-   # 一路回车，使用默认路径 ~/.ssh/id_rsa
-   ```
-
-2. **复制公钥到远程机器**
-   ```bash
-   # 方法1：使用 ssh-copy-id（推荐）
-   ssh-copy-id user@192.168.2.117
-   
-   # 方法2：手动复制（如果 ssh-copy-id 不可用）
-   cat ~/.ssh/id_rsa.pub | ssh user@192.168.2.117 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
-   ```
-
-3. **测试免密登录**
-   ```bash
-   ssh user@192.168.2.117
-   # 应该无需输入密码直接登录
-   ```
-
-4. **配置 SSH 别名（可选但推荐）**
-   
-   编辑本地 `~/.ssh/config` 文件，添加别名配置：
-   ```bash
-   nano ~/.ssh/config
-   ```
-   
-   添加以下内容：
-   ```
-   Host mongo-server
-       HostName 192.168.2.117
-       User taichilei
-       Port 22
-       IdentityFile ~/.ssh/id_rsa
-   ```
-   
-   保存后，就可以使用别名登录了：
-   ```bash
-   ssh mongo-server
-   # 等同于 ssh taichilei@192.168.2.117
-   ```
-   
-   其他常用别名示例：
-   ```
-   Host nas
-       HostName 192.168.2.117
-       User taichilei
-       
-   Host pi
-       HostName 192.168.2.100
-       User pi
-       Port 2222
-   ```
-
-#### 方案一：在远程机器上直接部署 MongoDB Docker
-
-1. **SSH 登录到远程机器**（如 192.168.2.117）
-   ```bash
-   ssh user@192.168.2.117
-   ```
-
-2. **在远程机器上启动 MongoDB Docker 容器**
-   ```bash
-   # 创建数据目录
-   mkdir -p ~/mongodb/data
-   
-   # 启动 MongoDB 容器
-   docker run -d \
-     --name mongodb \
-     -p 27017:27017 \
-     -e MONGO_INITDB_ROOT_USERNAME=admin \
-     -e MONGO_INITDB_ROOT_PASSWORD=your_password \
-     -v ~/mongodb/data:/data/db \
-     --restart unless-stopped \
-     mongo:latest
-   ```
-
-3. **配置防火墙**
-   ```bash
-   # Ubuntu/Debian
-   sudo ufw allow 27017/tcp
-   
-   # CentOS/RHEL
-   sudo firewall-cmd --permanent --add-port=27017/tcp
-   sudo firewall-cmd --reload
-   ```
-
-4. **验证 MongoDB 运行状态**
-   ```bash
-   docker ps | grep mongodb
-   docker logs mongodb
-   ```
-
-#### 方案二：使用 Docker Compose 部署
-
-在远程机器上创建 `docker-compose.yml`：
-
-```yaml
-version: '3.8'
-
-services:
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: your_password
-    volumes:
-      - ./mongodb/data:/data/db
-    command: mongod --bind_ip_all
-```
-
-启动命令：
-```bash
-docker-compose up -d
-```
-
-#### 客户端连接配置
-
-1. **修改服务器配置**
-   - 通过环境变量设置远程 MongoDB 连接字符串：
-   ```bash
-   # Linux/Mac
-   export MONGO_URI="mongodb://admin:your_password@192.168.2.117:27017"
-   
-   # Windows
-   set MONGO_URI=mongodb://admin:your_password@192.168.2.117:27017
-   ```
-
-2. **启动应用服务器**
-   ```bash
-   # 带环境变量启动
-   MONGO_URI="mongodb://admin:your_password@192.168.2.117:27017" go run main.go
-   ```
-
-#### 网络设置
-
-- 确保远程机器的防火墙允许 27017 端口的访问
-- 验证局域网内网络连接正常：
-  ```bash
-  telnet 192.168.2.117 27017
-  ```
-
-### 故障排除
-
-1. **MongoDB 连接失败**
-   - 检查 MongoDB 服务是否运行
-   - 验证连接字符串是否正确
-   - 检查网络防火墙设置
-
-2. **数据库初始化**
-   - 首次启动时，MongoDB 会自动创建数据库和集合
-   - 无需手动初始化操作
-
-3. **数据迁移**
-   - 从本地存储迁移到 MongoDB：使用导入导出功能
-   - 定期备份数据库以防止数据丢失
+- **v1.1**: 引入独立 Exam 表、物理外键及逻辑删除。
+- **v1.2**: 优化 Tags 的 GIN 索引及中文全文检索。
+- **v2.0**: 实现完整用户体系及海量答题记录的分区化存储。

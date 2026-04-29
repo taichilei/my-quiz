@@ -1,20 +1,22 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
 	"my-quiz/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
+// RecordHandler 处理答题记录相关的 HTTP 请求。
 type RecordHandler struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewRecordHandler(db *sql.DB) *RecordHandler {
+// NewRecordHandler 创建一个新的 RecordHandler。
+func NewRecordHandler(db *gorm.DB) *RecordHandler {
 	return &RecordHandler{
 		db: db,
 	}
@@ -30,26 +32,11 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 
 	record.AnsweredAt = time.Now().UnixMilli()
 
-	var recordID int
-	err := h.db.QueryRow(`
-		INSERT INTO records (user_id, question_id, user_answer, is_correct, time_spent, answered_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-	`,
-		record.UserID,
-		record.QuestionID,
-		record.UserAnswer,
-		record.IsCorrect,
-		record.TimeSpent,
-		record.AnsweredAt,
-	).Scan(&recordID)
-
-	if err != nil {
+	if err := h.db.Create(&record).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	record.ID = recordID
 	c.JSON(http.StatusCreated, record)
 }
 
@@ -57,41 +44,16 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 func (h *RecordHandler) GetRecords(c *gin.Context) {
 	userID := c.Param("userId")
 
-	query := "SELECT id, user_id, question_id, user_answer, is_correct, time_spent, answered_at FROM records WHERE user_id = $1"
-	var args []interface{}
-	args = append(args, userID)
+	var records []models.AnswerRecord
+	query := h.db.Where("user_id = ?", userID)
 
 	if questionID := c.Query("questionId"); questionID != "" {
-		query += " AND question_id = $2"
-		args = append(args, questionID)
+		query = query.Where("question_id = ?", questionID)
 	}
 
-	query += " ORDER BY answered_at DESC"
-
-	rows, err := h.db.Query(query, args...)
-	if err != nil {
+	if err := query.Order("answered_at DESC").Find(&records).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-	defer rows.Close()
-
-	var records []models.AnswerRecord
-	for rows.Next() {
-		var r models.AnswerRecord
-		err := rows.Scan(
-			&r.ID,
-			&r.UserID,
-			&r.QuestionID,
-			&r.UserAnswer,
-			&r.IsCorrect,
-			&r.TimeSpent,
-			&r.AnsweredAt,
-		)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		records = append(records, r)
 	}
 
 	if records == nil {
@@ -105,18 +67,11 @@ func (h *RecordHandler) GetRecords(c *gin.Context) {
 func (h *RecordHandler) GetStats(c *gin.Context) {
 	userID := c.Param("userId")
 
-	var total, correct int
-	err := h.db.QueryRow(`
-		SELECT
-			COUNT(*) as total,
-			COUNT(CASE WHEN is_correct THEN 1 END) as correct
-		FROM records WHERE user_id = $1
-	`, userID).Scan(&total, &correct)
+	var total int64
+	var correct int64
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	h.db.Model(&models.AnswerRecord{}).Where("user_id = ?", userID).Count(&total)
+	h.db.Model(&models.AnswerRecord{}).Where("user_id = ? AND is_correct = ?", userID, true).Count(&correct)
 
 	rate := 0.0
 	if total > 0 {

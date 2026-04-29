@@ -3,8 +3,8 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# 上下文是项目根目录，复制 server 目录下的所有文件
-COPY server/ ./
+# 复制当前目录（server）下的所有文件
+COPY . ./
 
 # 使用国内镜像加速下载
 ENV GOPROXY=https://goproxy.cn,direct
@@ -16,12 +16,9 @@ RUN go mod tidy && go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /my-quiz-server
 
 # 运行阶段
-FROM alpine:latest
+FROM postgres:16-alpine
 
 WORKDIR /app
-
-# 安装 CA 证书（用于 HTTPS）
-RUN apk --no-cache add ca-certificates
 
 # 复制构建产物
 COPY --from=builder /my-quiz-server .

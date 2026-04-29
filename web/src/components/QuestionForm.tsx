@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Question, QuestionType, Difficulty, ExamRef } from '../types';
+import type {
+  Question,
+  QuestionType,
+  Difficulty,
+  ExamRef,
+  Exam,
+} from '../types';
 import { questionApi } from '../api/client';
 import { uploadFile } from '../db';
 
@@ -62,7 +68,9 @@ export default function QuestionForm({
         );
         setExamSubject(editingQuestion.exam.subject || '');
         setExamPart(editingQuestion.exam.part);
-        setExamOrder(String(editingQuestion.exam.order));
+        setExamOrder(
+          editingQuestion.examOrder ? String(editingQuestion.examOrder) : ''
+        );
       } else {
         setExamName('');
         setExamYear('');
@@ -124,14 +132,15 @@ export default function QuestionForm({
     try {
       // 构建考试信息
       let exam: ExamRef | undefined;
+      let examOrderNum: number | undefined;
       if (examName && examPart && examOrder) {
         exam = {
           name: examName.trim(),
           year: examYear ? parseInt(examYear) : undefined,
           subject: examSubject.trim() || undefined,
           part: examPart.trim(),
-          order: parseInt(examOrder),
         };
+        examOrderNum = parseInt(examOrder);
       }
 
       if (editingQuestion) {
@@ -153,7 +162,8 @@ export default function QuestionForm({
                 .filter(Boolean)
             : undefined,
           images: currentImages.length > 0 ? currentImages : undefined,
-          exam,
+          exam: exam as unknown as Exam, // 兼容前端类型，后端实际处理外键关联
+          examOrder: examOrderNum,
           updatedAt: Date.now(),
         };
         await questionApi.update(editingQuestion.id, updated);
@@ -173,7 +183,8 @@ export default function QuestionForm({
                 .filter(Boolean)
             : undefined,
           images: currentImages.length > 0 ? currentImages : undefined,
-          exam,
+          exam: exam as unknown as Exam, // 兼容前端类型，后端实际处理外键关联
+          examOrder: examOrderNum,
           createdAt: Date.now(),
         };
         await questionApi.create(question);

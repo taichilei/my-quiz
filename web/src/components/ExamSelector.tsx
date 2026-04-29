@@ -114,7 +114,7 @@ export default function ExamSelector({
       (q) => q.exam?.name === examName && q.exam?.part === part
     );
     // 按 order 排序
-    filtered.sort((a, b) => (a.exam?.order || 0) - (b.exam?.order || 0));
+    filtered.sort((a, b) => (a.examOrder || 0) - (b.examOrder || 0));
     onSelectExam(filtered, examName, part);
   };
 
@@ -125,7 +125,7 @@ export default function ExamSelector({
         b.exam?.part || ''
       );
       if (partCompare !== 0) return partCompare;
-      return (a.exam?.order || 0) - (b.exam?.order || 0);
+      return (a.examOrder || 0) - (b.examOrder || 0);
     });
     onSelectExam(filtered, examName);
   };

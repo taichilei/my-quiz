@@ -35,7 +35,6 @@ export interface ExamRef {
   year?: number; // 年份，如 2017
   subject?: string; // 科目，如"综合知识和能力素质"
   part: string; // 部分，如"客观题"、"专业知识"、"实务题"
-  order: number; // 该部分内的题号，从 1 开始
 }
 
 /**

@@ -1,0 +1,590 @@
+{
+  "info": {
+    "name": "My-Quiz API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "My-Quiz 刷题应用后端 API 集合"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "用户认证（注册登录，公开接口）",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"123456\",\n  \"email\": \"test@example.com\"\n}"
+            },
+            "description": "用户注册，注册成功直接返回 JWT token"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"123456\"\n}"
+            },
+            "description": "用户登录，成功返回 JWT token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "description": "用户信息（需要认证）",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/user/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "me"]
+            },
+            "description": "获取当前登录用户信息，需要在 Header 带 Authorization: Bearer {{token}}"
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/user/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "me"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new-email@example.com\"\n}"
+            },
+            "description": "更新当前用户信息（邮箱），需要 Authorization header"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exams",
+      "description": "考试管理（需要认证）",
+      "item": [
+        {
+          "name": "List all exams",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "description": "获取所有考试列表（带题目统计）"
+          }
+        },
+        {
+          "name": "Get exam by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "考试ID"
+                }
+              ]
+            },
+            "description": "获取单个考试详情"
+          }
+        },
+        {
+          "name": "Create exam",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"2021江苏真题\",\n  \"year\": 2021,\n  \"subject\": \"公共基础知识\",\n  \"part\": \"客观题\"\n}"
+            },
+            "description": "创建新考试"
+          }
+        },
+        {
+          "name": "Update exam",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "考试ID"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"2021江苏真题\",\n  \"year\": 2021,\n  \"subject\": \"公共基础知识\",\n  \"part\": \"客观题\"\n}"
+            },
+            "description": "更新考试信息"
+          }
+        },
+        {
+          "name": "Delete exam",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "考试ID"
+                }
+              ]
+            },
+            "description": "删除考试（级联删除所有关联题目）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Questions",
+      "description": "题目管理",
+      "item": [
+        {
+          "name": "List questions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions?examId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions"],
+              "query": [
+                {
+                  "key": "examId",
+                  "value": "1",
+                  "description": "按考试筛选"
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "按题型筛选: single/multiple/judge"
+                }
+              ]
+            },
+            "description": "获取题目列表（支持筛选）"
+          }
+        },
+        {
+          "name": "Get question by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "题目ID"
+                }
+              ]
+            },
+            "description": "获取单个题目详情"
+          }
+        },
+        {
+          "name": "Create question",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"single\",\n  \"content\": \"Go语言的默认包管理工具叫什么？\",\n  \"options\": [\"dep\", \"go mod\", \"glide\", \"godep\"],\n  \"answer\": \"B\",\n  \"explanation\": \"Go 1.11 之后官方推出 go mod 作为默认包管理工具\",\n  \"difficulty\": 1,\n  \"tags\": [\"Go\", \"基础\"],\n  \"examId\": 1,\n  \"examOrder\": 1\n}"
+            },
+            "description": "创建新题目"
+          }
+        },
+        {
+          "name": "Update question",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "题目ID"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"single\",\n  \"content\": \"Go语言的默认包管理工具叫什么？\",\n  \"options\": [\"dep\", \"go mod\", \"glide\", \"godep\"],\n  \"answer\": \"B\",\n  \"explanation\": \"Go 1.11 之后官方推出 go mod 作为默认包管理工具\",\n  \"difficulty\": 1,\n  \"tags\": [\"Go\", \"基础\"],\n  \"examId\": 1,\n  \"examOrder\": 1\n}"
+            },
+            "description": "更新题目信息"
+          }
+        },
+        {
+          "name": "Delete question",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "题目ID"
+                }
+              ]
+            },
+            "description": "删除题目"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Records",
+      "description": "答题记录",
+      "item": [
+        {
+          "name": "Create record",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"test-user-001\",\n  \"questionId\": 1,\n  \"userAnswer\": \"B\",\n  \"isCorrect\": true,\n  \"timeSpent\": 15\n}"
+            },
+            "description": "创建答题记录"
+          }
+        },
+        {
+          "name": "Get user records",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/records/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "test-user-001",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "获取用户所有答题记录"
+          }
+        },
+        {
+          "name": "Get user stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/records/:userId/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records", ":userId", "stats"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "test-user-001",
+                  "description": "用户ID"
+                }
+              ]
+            },
+            "description": "获取用户统计信息（正确率等）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "description": "未完成刷题会话（跨设备同步）",
+      "item": [
+        {
+          "name": "Get current session",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session", "current"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "test-user-001"
+                }
+              ]
+            },
+            "description": "获取当前用户未完成会话"
+          }
+        },
+        {
+          "name": "Upsert session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"test-user-001\",\n  \"quizTitle\": \"2021江苏真题 - 全部\",\n  \"questionIds\": [1, 2, 3, 4, 5],\n  \"currentIndex\": 2,\n  \"selectedAnswer\": \"A\",\n  \"showResult\": true,\n  \"correctCount\": 1\n}"
+            },
+            "description": "创建或更新当前会话"
+          }
+        },
+        {
+          "name": "Delete current session",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/session/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "session", "current"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "test-user-001"
+                }
+              ]
+            },
+            "description": "删除当前未完成会话"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "description": "文件上传管理",
+      "item": [
+        {
+          "name": "List user uploads",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads"]
+            },
+            "description": "获取用户上传文件列表"
+          }
+        },
+        {
+          "name": "Get upload by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "获取单个文件信息"
+          }
+        },
+        {
+          "name": "Download file",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads/:id/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads", ":id", "download"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "下载原文件"
+          }
+        },
+        {
+          "name": "Upload file",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads"]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "description": "上传文件（PDF/图片）"
+          }
+        },
+        {
+          "name": "Update upload info",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"2021真题PDF\",\n  \"description\": \"江苏省2021年事业单位招聘真题\"\n}"
+            },
+            "description": "更新文件标题和描述"
+          }
+        },
+        {
+          "name": "Delete upload",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/uploads/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "uploads", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "删除文件"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "description": "API 基础 URL - 本地开发默认端口 8080"
+    }
+  ]
+}

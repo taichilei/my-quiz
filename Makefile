@@ -1,6 +1,6 @@
 # My-Quiz 容器化部署 Makefile
 
-.PHONY: help build up down restart logs clean test dev
+.PHONY: help build up down restart logs clean test typecheck dev
 
 # 默认目标
 help:
@@ -24,8 +24,8 @@ up:
 	docker-compose up -d
 	@echo "服务已启动:"
 	@echo "  - Web UI: http://localhost:3000"
-	@echo "  - API: http://localhost:8080"
-	@echo "  - PostgreSQL: localhost:5432"
+	@echo "  - API: http://localhost:8081"
+	@echo "  - PostgreSQL: localhost:5434"
 
 # 停止所有服务
 down:
@@ -47,6 +47,10 @@ clean:
 # 运行测试
 test:
 	cd web && npm test
+
+# 类型检查
+typecheck:
+	cd web && npm run typecheck
 
 # 本地开发（需要先安装依赖）
 dev:

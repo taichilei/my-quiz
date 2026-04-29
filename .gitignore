@@ -35,3 +35,25 @@ AGENT.md
 .cursor/
 .aider*
 SEP.md
+
+# Go binary
+server/my-quiz-server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Database data (PostgreSQL volume)
+database/database/
+
+# Raw question data (not committed to git)
+database/raw/
+database/quizzes/
+
+# User uploads
+uploads/
+
+# Temp debug files
+tmp-*.js
+debug-*.js
