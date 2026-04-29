@@ -9,6 +9,7 @@ import (
 
 	"my-quiz/config"
 	"my-quiz/handlers"
+	"my-quiz/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -46,43 +47,58 @@ func main() {
 	// API 路由
 	api := r.Group("/api")
 	{
-		// 题目相关接口
-		qHandler := handlers.NewQuestionHandler(db)
-		api.GET("/questions", qHandler.GetQuestions)
-		api.GET("/questions/:id", qHandler.GetQuestion)
-		api.POST("/questions", qHandler.CreateQuestion)
-		api.PUT("/questions/:id", qHandler.UpdateQuestion)
-		api.DELETE("/questions/:id", qHandler.DeleteQuestion)
-		api.GET("/exams", qHandler.GetExams) // backward compatibility
+		// 认证接口（公开，不需要登录）
+		authHandler := handlers.NewAuthHandler(db)
+		api.POST("/auth/register", authHandler.Register)
+		api.POST("/auth/login", authHandler.Login)
 
-		// 考试管理接口（独立 CRUD）
-		eHandler := handlers.NewExamHandler(db)
-		api.GET("/exams", eHandler.ListExams)
-		api.GET("/exams/:id", eHandler.GetExam)
-		api.POST("/exams", eHandler.CreateExam)
-		api.PUT("/exams/:id", eHandler.UpdateExam)
-		api.DELETE("/exams/:id", eHandler.DeleteExam)
+		// 需要 JWT 认证的接口
+		authGroup := api.Group("/")
+		authGroup.Use(middleware.JWTAuth())
+		{
+			// 用户信息接口
+			userHandler := handlers.NewUserHandler(db)
+			authGroup.GET("/user/me", userHandler.GetMe)
+			authGroup.PUT("/user/me", userHandler.UpdateMe)
 
-		// 答题记录接口
-		rHandler := handlers.NewRecordHandler(db)
-		api.POST("/records", rHandler.CreateRecord)
-		api.GET("/records/:userId", rHandler.GetRecords)
-		api.GET("/records/:userId/stats", rHandler.GetStats)
+			// 题目相关接口
+			qHandler := handlers.NewQuestionHandler(db)
+			authGroup.GET("/questions", qHandler.GetQuestions)
+			authGroup.GET("/questions/:id", qHandler.GetQuestion)
+			authGroup.POST("/questions", qHandler.CreateQuestion)
+			authGroup.PUT("/questions/:id", qHandler.UpdateQuestion)
+			authGroup.DELETE("/questions/:id", qHandler.DeleteQuestion)
 
-		// 未完成刷题会话接口（跨设备同步）
-		sHandler := handlers.NewSessionHandler(db)
-		api.GET("/session/current", sHandler.GetCurrent)
-		api.POST("/session", sHandler.Upsert)
-		api.DELETE("/session/current", sHandler.DeleteCurrent)
+			// 考试管理接口（独立 CRUD）
+			eHandler := handlers.NewExamHandler(db)
+			authGroup.GET("/exams", eHandler.ListExams)
+			// qHandler.GetExams kept for backward compatibility on old clients, but route is handled by eHandler now
+			authGroup.GET("/exams/:id", eHandler.GetExam)
+			authGroup.POST("/exams", eHandler.CreateExam)
+			authGroup.PUT("/exams/:id", eHandler.UpdateExam)
+			authGroup.DELETE("/exams/:id", eHandler.DeleteExam)
 
-		// 文件上传管理接口
-		uHandler := handlers.NewUploadHandler(db)
-		api.GET("/uploads", uHandler.List)
-		api.GET("/uploads/:id", uHandler.Get)
-		api.GET("/uploads/:id/download", uHandler.Download)
-		api.POST("/uploads", uHandler.Upload)
-		api.PUT("/uploads/:id", uHandler.Update)
-		api.DELETE("/uploads/:id", uHandler.Delete)
+			// 答题记录接口
+			rHandler := handlers.NewRecordHandler(db)
+			authGroup.POST("/records", rHandler.CreateRecord)
+			authGroup.GET("/records/:userId", rHandler.GetRecords)
+			authGroup.GET("/records/:userId/stats", rHandler.GetStats)
+
+			// 未完成刷题会话接口（跨设备同步）
+			sHandler := handlers.NewSessionHandler(db)
+			authGroup.GET("/session/current", sHandler.GetCurrent)
+			authGroup.POST("/session", sHandler.Upsert)
+			authGroup.DELETE("/session/current", sHandler.DeleteCurrent)
+
+			// 文件上传管理接口
+			uHandler := handlers.NewUploadHandler(db)
+			authGroup.GET("/uploads", uHandler.List)
+			authGroup.GET("/uploads/:id", uHandler.Get)
+			authGroup.GET("/uploads/:id/download", uHandler.Download)
+			authGroup.POST("/uploads", uHandler.Upload)
+			authGroup.PUT("/uploads/:id", uHandler.Update)
+			authGroup.DELETE("/uploads/:id", uHandler.Delete)
+		}
 	}
 
 	// 获取端口
