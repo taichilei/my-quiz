@@ -303,11 +303,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm py-4 mb-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <header className="bg-white dark:bg-gray-800 shadow-sm py-4 mb-4 transition-colors duration-300">
         <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-2xl font-bold text-gray-800">刷题助手</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">刷题助手</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             共 {questions.length} 道题目
           </p>
         </div>
@@ -322,7 +322,7 @@ export default function App() {
               <div className="flex items-center gap-3 mb-4">
                 <button
                   onClick={handleBackToExamSelect}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 btn-press p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <svg
                     className="w-6 h-6"
@@ -338,7 +338,7 @@ export default function App() {
                     />
                   </svg>
                 </button>
-                <h2 className="text-lg font-medium text-gray-800">
+                <h2 className="text-lg font-medium text-gray-800 dark:text-white">
                   {quizTitle}
                 </h2>
               </div>
@@ -384,34 +384,49 @@ export default function App() {
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-lg transition-colors duration-300">
         <div className="max-w-3xl mx-auto flex">
           <button
             onClick={() => {
               setTab('quiz');
               setIsQuizActive(false);
             }}
-            className={`flex-1 py-3 text-center ${
-              tab === 'quiz' ? 'text-blue-500 font-medium' : 'text-gray-500'
+            className={`flex-1 py-3 text-center flex flex-col items-center gap-1 transition-all duration-300 ${
+              tab === 'quiz'
+                ? 'text-blue-500 font-medium'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            刷题
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span className="text-xs">刷题</span>
           </button>
           <button
             onClick={() => setTab('list')}
-            className={`flex-1 py-3 text-center ${
-              tab === 'list' ? 'text-blue-500 font-medium' : 'text-gray-500'
+            className={`flex-1 py-3 text-center flex flex-col items-center gap-1 transition-all duration-300 ${
+              tab === 'list'
+                ? 'text-blue-500 font-medium'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            题库
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            <span className="text-xs">题库</span>
           </button>
           <button
             onClick={() => setTab('profile')}
-            className={`flex-1 py-3 text-center ${
-              tab === 'profile' ? 'text-blue-500 font-medium' : 'text-gray-500'
+            className={`flex-1 py-3 text-center flex flex-col items-center gap-1 transition-all duration-300 ${
+              tab === 'profile'
+                ? 'text-blue-500 font-medium'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            我的
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-xs">我的</span>
           </button>
         </div>
       </nav>

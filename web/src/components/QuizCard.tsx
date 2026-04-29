@@ -139,29 +139,88 @@ export default function QuizCard({
     return answer;
   };
 
+  // 计算进度百分比
+  const progressPercent = Math.round(
+    ((currentIndex + (showResult ? 1 : 0)) / displayQuestions.length) * 100
+  );
+
   if (questions.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-        暂无题目，请先添加题目
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center transition-colors duration-300">
+        <div className="text-5xl mb-4">📚</div>
+        <p className="text-gray-500 dark:text-gray-400 text-lg">暂无题目，请先添加题目</p>
       </div>
     );
   }
 
   if (finished) {
+    const accuracy = Math.round((correctCount / displayQuestions.length) * 100);
+    const isExcellent = accuracy >= 80;
+    const isGood = accuracy >= 60;
+
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">答题完成！</h2>
-        <p className="text-3xl font-bold text-blue-600 mb-2">
-          {correctCount} / {displayQuestions.length}
-        </p>
-        <p className="text-gray-500 mb-6">
-          正确率：{Math.round((correctCount / displayQuestions.length) * 100)}%
-        </p>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center slide-up transition-colors duration-300">
+        <div className="text-6xl mb-4">
+          {isExcellent ? '🎉' : isGood ? '👍' : '💪'}
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">答题完成！</h2>
+
+        {/* 环形进度展示 */}
+        <div className="relative w-32 h-32 mx-auto mb-6">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle
+              cx="64"
+              cy="64"
+              r="56"
+              className="fill-none stroke-gray-200 dark:stroke-gray-700"
+              strokeWidth="8"
+            />
+            <circle
+              cx="64"
+              cy="64"
+              r="56"
+              className={`fill-none transition-all duration-1000 ${
+                isExcellent
+                  ? 'stroke-green-500'
+                  : isGood
+                  ? 'stroke-blue-500'
+                  : 'stroke-orange-500'
+              }`}
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={`${accuracy * 3.52} 352`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-3xl font-bold text-gray-800 dark:text-white">{accuracy}%</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">正确率</span>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6">
+          <div className="flex justify-center gap-8">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-500">{correctCount}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">正确</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-500">
+                {displayQuestions.length - correctCount}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">错误</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-500">{displayQuestions.length}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">总计</p>
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={handleFinish}
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
         >
-          返回
+          返回继续刷题
         </button>
       </div>
     );
@@ -176,360 +235,425 @@ export default function QuizCard({
   const isCorrect =
     showResult && checkAnswer(selectedAnswer, currentQuestion.answer);
 
-  // 判断题
-  if (currentQuestion.type === 'judge') {
-    const judgeOptions = [true, false] as const;
-    const correctAnswer = currentQuestion.answer as boolean;
+  // 渲染选项按钮的通用样式
+  const getOptionClass = (
+    isSelected: boolean,
+    isCorrectOption: boolean,
+    showResult: boolean
+  ): string => {
+    let baseClass =
+      'w-full text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 btn-press ';
 
-    return (
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-500">
-            {currentIndex + 1} / {displayQuestions.length}
-          </span>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-            {typeLabels[currentQuestion.type]}
-          </span>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-gray-800 mb-2">{currentQuestion.content}</p>
-          {currentQuestion.images && currentQuestion.images.length > 0 && (
-            <div className="space-y-2">
-              {currentQuestion.images.map((image, index) => (
-                <div key={index} className="rounded-lg overflow-hidden border">
-                  <img
-                    src={image}
-                    alt={`Question image ${index + 1}`}
-                    className="w-full h-auto object-contain"
-                    style={{ maxHeight: '300px' }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2 mb-4">
-          {judgeOptions.map((opt) => {
-            const optLabel =
-              JUDGE_ANSWER_LABELS[String(opt) as 'true' | 'false'];
-            const isSelected = selectedAnswer === opt;
-            const isCorrectAnswer = opt === correctAnswer;
-
-            let btnClass = 'border-gray-200 hover:bg-gray-50';
-            if (showResult) {
-              if (isSelected && isCorrectAnswer) {
-                btnClass = 'bg-green-100 border-green-500 text-green-700';
-              } else if (isSelected && !isCorrectAnswer) {
-                btnClass = 'bg-red-100 border-red-500 text-red-700';
-              } else if (isCorrectAnswer) {
-                btnClass = 'bg-green-100 border-green-500 text-green-700';
-              }
-            } else if (isSelected) {
-              btnClass = 'bg-blue-50 border-blue-500';
-            }
-
-            return (
-              <button
-                key={String(opt)}
-                onClick={() => handleSelect(opt)}
-                disabled={showResult}
-                className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${btnClass}`}
-              >
-                {optLabel}
-                {showResult && isCorrectAnswer && (
-                  <span className="ml-2">✓</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {!showResult && (
-          <button
-            onClick={handleDontKnow}
-            className="w-full mb-4 bg-gray-100 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-          >
-            我不会，看答案
-          </button>
-        )}
-
-        {showResult && (
-          <div
-            className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
-          >
-            <p
-              className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
-            >
-              {selectedAnswer === ''
-                ? '未作答，正确答案：' + formatAnswer(correctAnswer)
-                : isCorrect
-                  ? '回答正确！'
-                  : '回答错误，正确答案：' + formatAnswer(correctAnswer)}
-            </p>
-            {currentQuestion.explanation && (
-              <p className="text-sm text-gray-500 mt-1">
-                解析：{currentQuestion.explanation}
-              </p>
-            )}
-          </div>
-        )}
-
-        {showResult && (
-          <button
-            onClick={nextQuestion}
-            className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-          >
-            {currentIndex + 1 >= displayQuestions.length ? '完成' : '下一题'}
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // 单选题
-  if (currentQuestion.type === 'single') {
-    return (
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-500">
-            {currentIndex + 1} / {displayQuestions.length}
-          </span>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-            {typeLabels[currentQuestion.type]}
-          </span>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-gray-800 mb-2">{currentQuestion.content}</p>
-          {currentQuestion.images && currentQuestion.images.length > 0 && (
-            <div className="space-y-2">
-              {currentQuestion.images.map((image, index) => (
-                <div key={index} className="rounded-lg overflow-hidden border">
-                  <img
-                    src={image}
-                    alt={`Question image ${index + 1}`}
-                    className="w-full h-auto object-contain"
-                    style={{ maxHeight: '300px' }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2 mb-4">
-          {currentQuestion.options?.map((opt, idx) => {
-            const label = String.fromCharCode(65 + idx);
-            const isSelected = selectedAnswer === label;
-            const isCorrectAnswer = label === currentQuestion.answer;
-
-            let btnClass = 'border-gray-200 hover:bg-gray-50';
-            if (showResult) {
-              if (isSelected && isCorrectAnswer) {
-                btnClass = 'bg-green-100 border-green-500 text-green-700';
-              } else if (isSelected && !isCorrectAnswer) {
-                btnClass = 'bg-red-100 border-red-500 text-red-700';
-              } else if (isCorrectAnswer) {
-                btnClass = 'bg-green-100 border-green-500 text-green-700';
-              }
-            } else if (isSelected) {
-              btnClass = 'bg-blue-50 border-blue-500';
-            }
-
-            return (
-              <button
-                key={idx}
-                onClick={() => handleSelect(label)}
-                disabled={showResult}
-                className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${btnClass}`}
-              >
-                <span className="font-medium">{label}.</span> {opt}
-                {showResult && isCorrectAnswer && (
-                  <span className="ml-2">✓</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {!showResult && (
-          <button
-            onClick={handleDontKnow}
-            className="w-full mb-4 bg-gray-100 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-          >
-            我不会，看答案
-          </button>
-        )}
-
-        {showResult && (
-          <div
-            className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
-          >
-            <p
-              className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
-            >
-              {selectedAnswer === ''
-                ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer)
-                : isCorrect
-                  ? '回答正确！'
-                  : '回答错误，正确答案：' +
-                    formatAnswer(currentQuestion.answer)}
-            </p>
-            {currentQuestion.explanation && (
-              <p className="text-sm text-gray-500 mt-1">
-                解析：{currentQuestion.explanation}
-              </p>
-            )}
-          </div>
-        )}
-
-        {showResult && (
-          <button
-            onClick={nextQuestion}
-            className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-          >
-            {currentIndex + 1 >= displayQuestions.length ? '完成' : '下一题'}
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // 多选题
-  const selectedArr =
-    typeof selectedAnswer === 'string'
-      ? selectedAnswer.split(',').filter(Boolean)
-      : [];
-  const correctArr =
-    typeof currentQuestion.answer === 'string'
-      ? currentQuestion.answer.split(',').filter(Boolean)
-      : [];
-
-  const handleMultiSelect = (label: string) => {
-    if (showResult) return;
-
-    const newSelected = selectedArr.includes(label)
-      ? selectedArr.filter((s) => s !== label)
-      : [...selectedArr, label].sort();
-
-    if (newSelected.length > 0) {
-      onSelectedAnswerChange(newSelected.join(','));
+    if (showResult) {
+      if (isSelected && isCorrectOption) {
+        return baseClass + 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-400';
+      } else if (isSelected && !isCorrectOption) {
+        return baseClass + 'bg-red-50 dark:bg-red-900/30 border-red-500 text-red-700 dark:text-red-400';
+      } else if (isCorrectOption) {
+        return baseClass + 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-400';
+      }
+      return baseClass + 'border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500';
+    } else if (isSelected) {
+      return baseClass + 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-400';
     }
-  };
-
-  const confirmMultiAnswer = () => {
-    if (selectedArr.length === 0 || showResult) return;
-    onShowResultChange(true);
-
-    const correct = checkAnswer(selectedAnswer, currentQuestion.answer);
-    if (correct) {
-      onCorrectCountChange((c) => c + 1);
-    }
-
-    // 记录作答到服务器
-    recordApi
-      .create({
-        userId: USER_ID,
-        questionId: currentQuestion.id,
-        userAnswer: selectedAnswer as string,
-        isCorrect: correct,
-        answeredAt: Date.now(),
-      })
-      .catch((err) => console.error('Failed to record answer:', err));
+    return (
+      baseClass +
+      'border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300'
+    );
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 slide-up transition-colors duration-300">
+      {/* 进度条 */}
+      <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full mb-4 overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {currentIndex + 1} / {displayQuestions.length}
         </span>
-        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+        <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full font-medium">
           {typeLabels[currentQuestion.type]}
         </span>
       </div>
 
-      <p className="text-gray-800 mb-4">{currentQuestion.content}</p>
-
-      <div className="space-y-2 mb-4">
-        {currentQuestion.options?.map((opt, idx) => {
-          const label = String.fromCharCode(65 + idx);
-          const isSelected = selectedArr.includes(label);
-          const isCorrectOption = correctArr.includes(label);
-
-          let btnClass = 'border-gray-200 hover:bg-gray-50';
-          if (showResult) {
-            if (isSelected && isCorrectOption) {
-              btnClass = 'bg-green-100 border-green-500 text-green-700';
-            } else if (isSelected && !isCorrectOption) {
-              btnClass = 'bg-red-100 border-red-500 text-red-700';
-            } else if (!isSelected && isCorrectOption) {
-              btnClass = 'bg-green-100 border-green-500 text-green-700';
-            }
-          } else if (isSelected) {
-            btnClass = 'bg-blue-50 border-blue-500';
-          }
-
-          return (
-            <button
-              key={idx}
-              onClick={() => handleMultiSelect(label)}
-              disabled={showResult}
-              className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${btnClass}`}
-            >
-              <span className="font-medium">{label}.</span> {opt}
-              {showResult && isCorrectOption && <span className="ml-2">✓</span>}
-            </button>
-          );
-        })}
+      <div className="mb-6">
+        <p className="text-gray-800 dark:text-white text-base leading-relaxed mb-4">
+          {currentQuestion.content}
+        </p>
+        {currentQuestion.images && currentQuestion.images.length > 0 && (
+          <div className="space-y-3">
+            {currentQuestion.images.map((image, index) => (
+              <div
+                key={index}
+                className="rounded-xl overflow-hidden border dark:border-gray-700 shadow-sm"
+              >
+                <img
+                  src={image}
+                  alt={`Question image ${index + 1}`}
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '300px' }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {showResult && (
-        <div
-          className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}
-        >
-          <p
-            className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}
-          >
-            {selectedAnswer === ''
-              ? '未作答，正确答案：' + formatAnswer(currentQuestion.answer)
-              : isCorrect
-                ? '回答正确！'
-                : '回答错误，正确答案：' + formatAnswer(currentQuestion.answer)}
-          </p>
-          {currentQuestion.explanation && (
-            <p className="text-sm text-gray-500 mt-1">
-              解析：{currentQuestion.explanation}
-            </p>
+      {/* 判断题 */}
+      {currentQuestion.type === 'judge' && (
+        <>
+          <div className="space-y-3 mb-4">
+            {([true, false] as const).map((opt) => {
+              const optLabel =
+                JUDGE_ANSWER_LABELS[String(opt) as 'true' | 'false'];
+              const isSelected = selectedAnswer === opt;
+              const isCorrectAnswer = opt === (currentQuestion.answer as boolean);
+
+              return (
+                <button
+                  key={String(opt)}
+                  onClick={() => handleSelect(opt)}
+                  disabled={showResult}
+                  className={getOptionClass(isSelected, isCorrectAnswer, showResult)}
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
+                        isSelected
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {opt ? '✓' : '✕'}
+                    </span>
+                    {optLabel}
+                    {showResult && isCorrectAnswer && (
+                      <span className="ml-auto text-green-500">✓</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {!showResult && (
+            <button
+              onClick={handleDontKnow}
+              className="w-full mb-4 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors btn-press"
+            >
+              🤔 我不会，看答案
+            </button>
           )}
-        </div>
+
+          {showResult && (
+            <div
+              className={`p-4 rounded-xl mb-4 fade-in ${
+                isCorrect
+                  ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+              }`}
+            >
+              <p
+                className={`font-medium flex items-center gap-2 ${
+                  isCorrect
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-red-700 dark:text-red-400'
+                }`}
+              >
+                {selectedAnswer === '' ? (
+                  <>
+                    <span>⏭️</span>
+                    未作答，正确答案：{formatAnswer(currentQuestion.answer as boolean)}
+                  </>
+                ) : isCorrect ? (
+                  <>
+                    <span>🎉</span>
+                    回答正确！
+                  </>
+                ) : (
+                  <>
+                    <span>😅</span>
+                    回答错误，正确答案：
+                    {formatAnswer(currentQuestion.answer as boolean)}
+                  </>
+                )}
+              </p>
+              {currentQuestion.explanation && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 pl-7">
+                  💡 {currentQuestion.explanation}
+                </p>
+              )}
+            </div>
+          )}
+
+          {showResult && (
+            <button
+              onClick={nextQuestion}
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
+            >
+              {currentIndex + 1 >= displayQuestions.length ? '🎯 完成' : '下一题 →'}
+            </button>
+          )}
+        </>
       )}
 
-      {!showResult ? (
-        <div className="space-y-2">
-          <button
-            onClick={confirmMultiAnswer}
-            disabled={selectedArr.length === 0}
-            className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
-          >
-            确认答案
-          </button>
-          <button
-            onClick={handleDontKnow}
-            className="w-full bg-gray-100 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-          >
-            我不会，看答案
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={nextQuestion}
-          className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-        >
-          {currentIndex + 1 >= displayQuestions.length ? '完成' : '下一题'}
-        </button>
+      {/* 单选题 */}
+      {currentQuestion.type === 'single' && (
+        <>
+          <div className="space-y-3 mb-4">
+            {currentQuestion.options?.map((opt, idx) => {
+              const label = String.fromCharCode(65 + idx);
+              const isSelected = selectedAnswer === label;
+              const isCorrectAnswer = label === currentQuestion.answer;
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => handleSelect(label)}
+                  disabled={showResult}
+                  className={getOptionClass(isSelected, isCorrectAnswer, showResult)}
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                        isSelected
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                    {opt}
+                    {showResult && isCorrectAnswer && (
+                      <span className="ml-auto text-green-500">✓</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {!showResult && (
+            <button
+              onClick={handleDontKnow}
+              className="w-full mb-4 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors btn-press"
+            >
+              🤔 我不会，看答案
+            </button>
+          )}
+
+          {showResult && (
+            <div
+              className={`p-4 rounded-xl mb-4 fade-in ${
+                isCorrect
+                  ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+              }`}
+            >
+              <p
+                className={`font-medium flex items-center gap-2 ${
+                  isCorrect
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-red-700 dark:text-red-400'
+                }`}
+              >
+                {selectedAnswer === '' ? (
+                  <>
+                    <span>⏭️</span>
+                    未作答，正确答案：{formatAnswer(currentQuestion.answer)}
+                  </>
+                ) : isCorrect ? (
+                  <>
+                    <span>🎉</span>
+                    回答正确！
+                  </>
+                ) : (
+                  <>
+                    <span>😅</span>
+                    回答错误，正确答案：{formatAnswer(currentQuestion.answer)}
+                  </>
+                )}
+              </p>
+              {currentQuestion.explanation && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 pl-7">
+                  💡 {currentQuestion.explanation}
+                </p>
+              )}
+            </div>
+          )}
+
+          {showResult && (
+            <button
+              onClick={nextQuestion}
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
+            >
+              {currentIndex + 1 >= displayQuestions.length ? '🎯 完成' : '下一题 →'}
+            </button>
+          )}
+        </>
+      )}
+
+      {/* 多选题 */}
+      {currentQuestion.type === 'multiple' && (
+        <>
+          <div className="space-y-3 mb-4">
+            {(() => {
+              const selectedArr =
+                typeof selectedAnswer === 'string'
+                  ? selectedAnswer.split(',').filter(Boolean)
+                  : [];
+              const correctArr =
+                typeof currentQuestion.answer === 'string'
+                  ? currentQuestion.answer.split(',').filter(Boolean)
+                  : [];
+
+              return currentQuestion.options?.map((opt, idx) => {
+                const label = String.fromCharCode(65 + idx);
+                const isSelected = selectedArr.includes(label);
+                const isCorrectOption = correctArr.includes(label);
+
+                const handleMultiSelect = (label: string) => {
+                  if (showResult) return;
+
+                  const newSelected = selectedArr.includes(label)
+                    ? selectedArr.filter((s) => s !== label)
+                    : [...selectedArr, label].sort();
+
+                  if (newSelected.length > 0) {
+                    onSelectedAnswerChange(newSelected.join(','));
+                  }
+                };
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleMultiSelect(label)}
+                    disabled={showResult}
+                    className={getOptionClass(isSelected, isCorrectOption, showResult)}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={`w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold transition-colors ${
+                          isSelected
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {isSelected ? '✓' : label}
+                      </span>
+                      {opt}
+                      {showResult && isCorrectOption && (
+                        <span className="ml-auto text-green-500">✓</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              });
+            })()}
+          </div>
+
+          {(() => {
+            const selectedArr =
+              typeof selectedAnswer === 'string'
+                ? selectedAnswer.split(',').filter(Boolean)
+                : [];
+
+            const confirmMultiAnswer = () => {
+              if (selectedArr.length === 0 || showResult) return;
+              onShowResultChange(true);
+
+              const correct = checkAnswer(selectedAnswer, currentQuestion.answer);
+              if (correct) {
+                onCorrectCountChange((c) => c + 1);
+              }
+
+              recordApi
+                .create({
+                  userId: USER_ID,
+                  questionId: currentQuestion.id,
+                  userAnswer: selectedAnswer as string,
+                  isCorrect: correct,
+                  answeredAt: Date.now(),
+                })
+                .catch((err) => console.error('Failed to record answer:', err));
+            };
+
+            return (
+              <>
+                {showResult && (
+                  <div
+                    className={`p-4 rounded-xl mb-4 fade-in ${
+                      isCorrect
+                        ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+                    }`}
+                  >
+                    <p
+                      className={`font-medium flex items-center gap-2 ${
+                        isCorrect
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-red-700 dark:text-red-400'
+                      }`}
+                    >
+                      {selectedAnswer === '' ? (
+                        <>
+                          <span>⏭️</span>
+                          未作答，正确答案：{formatAnswer(currentQuestion.answer)}
+                        </>
+                      ) : isCorrect ? (
+                        <>
+                          <span>🎉</span>
+                          回答正确！
+                        </>
+                      ) : (
+                        <>
+                          <span>😅</span>
+                          回答错误，正确答案：
+                          {formatAnswer(currentQuestion.answer)}
+                        </>
+                      )}
+                    </p>
+                    {currentQuestion.explanation && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 pl-7">
+                        💡 {currentQuestion.explanation}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {!showResult ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={confirmMultiAnswer}
+                      disabled={selectedArr.length === 0}
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed btn-press"
+                    >
+                      ✅ 确认答案 ({selectedArr.length} 已选)
+                    </button>
+                    <button
+                      onClick={handleDontKnow}
+                      className="w-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors btn-press"
+                    >
+                      🤔 我不会，看答案
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={nextQuestion}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
+                  >
+                    {currentIndex + 1 >= displayQuestions.length ? '🎯 完成' : '下一题 →'}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </>
       )}
     </div>
   );
