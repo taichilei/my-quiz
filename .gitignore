@@ -29,7 +29,6 @@ Thumbs.db
 *.tsbuildinfo
 
 # AI generated files
-CLAUDE.md
 .claude/
 AGENT.md
 .cursor/
