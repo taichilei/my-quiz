@@ -57,6 +57,10 @@ func main() {
 		authHandler := handlers.NewAuthHandler(db)
 		api.POST("/auth/register", authHandler.Register)
 		api.POST("/auth/login", authHandler.Login)
+		api.POST("/auth/verify-email", authHandler.VerifyEmail)
+		api.POST("/auth/resend-verification", authHandler.ResendVerificationEmail)
+		api.POST("/auth/forgot-password", authHandler.ForgotPassword)
+		api.POST("/auth/reset-password", authHandler.ResetPassword)
 
 		// 需要 JWT 认证的接口
 		authGroup := api.Group("/")

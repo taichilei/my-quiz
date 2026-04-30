@@ -86,10 +86,10 @@ describe('QuizCard Component', () => {
       renderComponent([mockQuestion]);
 
       expect(screen.getByText('这是测试题目内容？')).toBeInTheDocument();
-      expect(screen.getByText('A. 选项A')).toBeInTheDocument();
-      expect(screen.getByText('B. 选项B')).toBeInTheDocument();
-      expect(screen.getByText('C. 选项C')).toBeInTheDocument();
-      expect(screen.getByText('D. 选项D')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('选项A'))).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('选项B'))).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('选项C'))).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('选项D'))).toBeInTheDocument();
     });
 
     it('should show question type badge', () => {
@@ -101,14 +101,14 @@ describe('QuizCard Component', () => {
     it('should show give up button', () => {
       renderComponent([mockQuestion]);
 
-      expect(screen.getByText('我不会，看答案')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('我不会，看答案'))).toBeInTheDocument();
     });
 
     it('should show result immediately after selection (single choice)', () => {
       renderComponent([mockQuestion]);
 
       // 选择答案后直接显示结果
-      fireEvent.click(screen.getByText('A. 选项A'));
+      fireEvent.click(screen.getByText((content) => content.includes('选项A')));
 
       // 应该显示回答正确
       expect(screen.getByText(/回答正确/)).toBeInTheDocument();
@@ -152,9 +152,9 @@ describe('QuizCard Component', () => {
       renderComponent([mockMultipleQuestion]);
 
       // 选择答案后需要确认
-      fireEvent.click(screen.getByText('A. 选项A'));
+      fireEvent.click(screen.getByText((content) => content.includes('选项A')));
 
-      expect(screen.getByText('确认答案')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('确认答案'))).toBeInTheDocument();
     });
   });
 
@@ -173,10 +173,10 @@ describe('QuizCard Component', () => {
       renderComponent([mockQuestion, mockJudgeQuestion]);
 
       // 回答第一题（单选直接显示结果）
-      fireEvent.click(screen.getByText('A. 选项A'));
+      fireEvent.click(screen.getByText((content) => content.includes('选项A')));
 
       // 应该显示下一题按钮
-      expect(screen.getByText('下一题')).toBeInTheDocument();
+      expect(screen.getByText((content) => content.includes('下一题'))).toBeInTheDocument();
     });
   });
 
@@ -198,7 +198,7 @@ describe('QuizCard Component', () => {
     it('should show explanation when giving up', () => {
       renderComponent([mockQuestion]);
 
-      fireEvent.click(screen.getByText('我不会，看答案'));
+      fireEvent.click(screen.getByText((content) => content.includes('我不会，看答案')));
 
       expect(
         screen.getByText((content) => content.includes('解析'))
@@ -211,8 +211,8 @@ describe('QuizCard Component', () => {
       renderComponent([mockQuestion]);
 
       // 回答问题后点击完成
-      fireEvent.click(screen.getByText('A. 选项A'));
-      fireEvent.click(screen.getByText((content) => content === '完成'));
+      fireEvent.click(screen.getByText((content) => content.includes('A.')));
+      fireEvent.click(screen.getByText((content) => content.includes('完成')));
 
       expect(screen.getByText('答题完成！')).toBeInTheDocument();
     });

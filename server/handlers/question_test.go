@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"my-quiz/models"
 
@@ -22,7 +23,8 @@ import (
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	// Use unique in-memory database for each test
-	dbName := fmt.Sprintf("file:test-%p?mode=memory&cache=shared", t)
+	// 不使用 cache=shared 避免测试间数据库共享
+	dbName := fmt.Sprintf("file:test-%d?mode=memory&cache=private", time.Now().UnixNano())
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
@@ -36,6 +38,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.QuizSession{},
 		&models.Upload{},
 		&models.User{},
+		&models.EmailVerification{},
+		&models.PasswordReset{},
 	)
 	if err != nil {
 		t.Fatalf("Failed to migrate database: %v", err)
