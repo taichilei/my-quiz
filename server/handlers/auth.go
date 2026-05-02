@@ -9,6 +9,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"my-quiz/async"
 	"my-quiz/middleware"
 	"my-quiz/models"
 	"my-quiz/utils"
@@ -99,8 +100,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	tx.Commit()
 
-	// 发送验证邮件（异步，不阻塞响应）
-	go func() {
+	// 发送验证邮件（提交到 async 任务池，受 worker 数和队列容量约束）
+	async.Submit(func() {
 		baseURL := os.Getenv("APP_URL")
 		if baseURL == "" {
 			baseURL = "http://localhost:5173"
@@ -111,7 +112,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			// 记录日志但不返回错误给用户
 			println("Failed to send verification email:", err.Error())
 		}
-	}()
+	})
 
 	// 注册成功但返回提示需要验证邮箱（不自动登录）
 	c.JSON(http.StatusCreated, gin.H{
@@ -258,8 +259,8 @@ func (h *AuthHandler) ResendVerificationEmail(c *gin.Context) {
 		return
 	}
 
-	// 异步发送邮件
-	go func() {
+	// 提交到 async 任务池
+	async.Submit(func() {
 		baseURL := os.Getenv("APP_URL")
 		if baseURL == "" {
 			baseURL = "http://localhost:5173"
@@ -269,7 +270,7 @@ func (h *AuthHandler) ResendVerificationEmail(c *gin.Context) {
 		if err := utils.SendVerificationEmail(user.Email, user.Username, verifyURL); err != nil {
 			println("Failed to send verification email:", err.Error())
 		}
-	}()
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Verification email sent"})
 }
@@ -311,8 +312,8 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	// 异步发送邮件（复用邮件发送模式）
-	go func() {
+	// 提交到 async 任务池
+	async.Submit(func() {
 		baseURL := os.Getenv("APP_URL")
 		if baseURL == "" {
 			baseURL = "http://localhost:5173"
@@ -322,7 +323,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		if err := utils.SendPasswordResetEmail(user.Email, user.Username, resetURL); err != nil {
 			println("Failed to send password reset email:", err.Error())
 		}
-	}()
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "If the email exists, a reset link has been sent"})
 }

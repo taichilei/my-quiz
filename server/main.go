@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"my-quiz/async"
 	"my-quiz/config"
 	"my-quiz/handlers"
 	"my-quiz/middleware"
@@ -15,8 +14,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
-
-var _ = async.Submit // 确保 async 包被导入（init 自动初始化）
 
 func main() {
 	// 加载配置
