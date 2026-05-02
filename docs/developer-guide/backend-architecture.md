@@ -24,10 +24,18 @@ server/
 ├── config/
 │   └── config.go           # 配置加载、数据库连接、表结构初始化
 ├── middleware/
-│   └── jwt_auth.go         # JWT 认证中间件
+│   ├── jwt_auth.go         # JWT 认证中间件
+│   └── client_info.go      # 多端识别中间件（解析 X-Client-* Header / UA 兜底）
+├── async/
+│   └── task_pool.go        # 轻量 Goroutine 任务池（init() 自启动，进程内）
+├── utils/
+│   ├── email.go            # SMTP 邮件发送（验证邮件、密码重置邮件）
+│   └── random.go           # 随机字符串/Token 生成
 ├── models/
 │   ├── question.go         # 题目、记录、会话数据结构定义
 │   ├── user.go             # 用户数据结构定义
+│   ├── email_verification.go  # 邮箱验证 Token
+│   ├── password_reset.go   # 密码重置 Token
 │   └── upload.go           # 文件上传数据结构定义
 └── handlers/
     ├── question.go         # 题目相关 API 处理器
@@ -35,7 +43,7 @@ server/
     ├── record.go           # 答题记录相关 API 处理器
     ├── session.go          # 未完成刷题会话处理器（跨设备同步）
     ├── upload.go           # 文件上传管理 API 处理器
-    ├── auth.go             # 用户认证 API 处理器（注册、登录）
+    ├── auth.go             # 用户认证 API 处理器（注册、登录、邮箱验证、密码重置）
     └── user.go             # 用户信息 API 处理器（获取、更新）
 ```
 
@@ -412,6 +420,48 @@ authGroup.Use(middleware.JWTAuth())
 
 ---
 
+## 异步任务池（async）
+
+### 用途
+处理「不影响主请求结果」的副作用，比如发邮件、写第三方日志。把它们从 HTTP 请求路径上移出去，但又不裸用 `go func(){}()` —— 后者并发不可控、panic 会拖死进程、队列堆积也看不见。
+
+### 实现位置
+- 代码：`server/async/task_pool.go`
+- 入口：`async.Submit(fn func())` / `async.SubmitWithRetry(fn, maxRetry int)`
+- 默认参数：`DefaultQueueSize = 100`、`DefaultWorkerNum = 5`，包 `init()` 自动启动，无需在 `main.go` 显式初始化
+
+### 工作模型
+```
+caller → Submit(fn) → 100 容量的 chan func() → 5 个 worker goroutine 消费 → safeRun 包裹（recover panic）
+```
+
+- **背压**：队列满时 `Submit` 不阻塞调用方，直接 `default` 分支丢任务并打 `WARN` 日志（防止上游被慢任务拖垮）
+- **panic 兜底**：`safeRun` 捕获所有 panic 并打栈，单个任务崩溃不会拖死 worker
+- **可观测**：`async.QueueSize()` 返回当前队列长度，可接入监控
+- **重试限制**：`SubmitWithRetry` 只在任务 **panic** 时重试，return error 不会触发；外部库如 SMTP 是返回 error 的，应该自己决定要不要捕获后 panic 来触发重试，或者改用更显式的重试逻辑
+
+### 当前调用点
+| 调用点 | 任务 | 说明 |
+|--------|------|------|
+| `handlers/auth.go` Register | `utils.SendVerificationEmail` | 注册成功后发验证邮件 |
+| `handlers/auth.go` ResendVerificationEmail | `utils.SendVerificationEmail` | 用户主动重发验证邮件 |
+| `handlers/auth.go` ForgotPassword | `utils.SendPasswordResetEmail` | 忘记密码发重置链接 |
+| `handlers/user.go` UpdateMe | `utils.SendVerificationEmail` | 用户改邮箱后重置 `EmailVerified=false` 并发新地址的验证邮件 |
+
+### 使用规约
+1. **业务异步统一走 `async.Submit`**，不再写裸 `go func(){}()`。规约的目的是让所有后台任务都受同一份并发上限和 panic 兜底约束。
+2. **不能把请求作用域的对象（`*gin.Context`、`http.Request`、未提交的 `*gorm.DB` 事务）传进 task** —— task 在另一个 goroutine 里执行，请求生命周期已经结束。需要的字段先拷贝出来再闭包捕获（参考 `auth.go` 的 `user.Email` / `token` 写法）。
+3. **task 内必须自己处理错误**，错误不会回到调用方。当前约定是 `println` / `log.Printf` 打日志即可；将来如要重试或告警，在 task 内部实现。
+4. **不要在 task 内做长事务或长循环**，会一直占着 worker 槽位。重活应该再分批 `Submit`。
+
+### 容量调整
+默认 5 worker / 100 队列适合"低频 + 无状态"任务（邮件发送场景一天数百到数千次足够）。如果接入更大量级的异步任务，需要：
+1. 在 `main.go` 启动前显式调一次 `async.Init(queueSize, workerNum)` 覆盖默认值
+2. 评估是否要把 panic-only 重试换成基于 error 的重试（改造 `SubmitWithRetry`）
+3. 接入 `async.QueueSize()` 监控，避免持续打"task dropped"日志而无人察觉
+
+---
+
 ## API 接口文档
 
 ### 认证相关（公开接口）
@@ -469,6 +519,8 @@ authGroup.Use(middleware.JWTAuth())
 ```
 
 **响应（200 OK）：** 更新后的 `User` 对象
+
+> 副作用：当请求邮箱与当前邮箱不一致时，服务端会把 `EmailVerified` 重置为 `false`、清掉旧的 `email_verifications` 记录、写一条新 token，并通过 `async.Submit` 异步给新邮箱发验证邮件。前端在收到 200 后应引导用户去新邮箱完成验证，否则下次登录会被 `403 Email not verified` 拦截。
 
 ### 题目相关
 
@@ -645,6 +697,8 @@ sequenceDiagram
 - [x] ID 类型统一（Go `int` 匹配数据库 SERIAL）
 - [x] 引入 GORM ORM，简化 CRUD 开发
 - [x] 增加 `quiz_sessions` 表，支持未完成进度跨设备同步
+- [x] 引入多端识别中间件 `middleware/client_info.go`，区分 web / iOS / Android 客户端
+- [x] 邮件发送统一走 `async` 任务池（注册验证、重发验证、密码重置 3 处），裸 `go func()` 不再用于业务异步
 
 ### 演进方向（题目量超过 1000+ 后）
 
