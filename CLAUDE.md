@@ -4,10 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-My-Quiz 是一个刷题 Web 应用，采用前后端分离架构：
-- **前端**：React + TypeScript，浏览器端渲染，支持 PWA 离线
-- **后端**：Go + PostgreSQL，提供 RESTful API，数据持久化存储在数据库
+My-Quiz 是一个多端刷题应用，采用前后端分离架构：
+- **Web 前端**（`apps/web/`）：React + TypeScript + Vite，支持 PWA 离线
+- **iOS 原生端**（`apps/native/`）：React Native + Expo（独立 npm 工程）
+- **后端**（`server/`）：Go + Gin + PostgreSQL（GORM），提供 RESTful API，多端共用
 - 支持多设备同步，核心功能：题目管理、随机刷题、错题本、统计信息、批量导入导出、未完成进度跨设备恢复
+
+> `packages/` 当前为空，预留作未来 Web/Native 共享包目录。
 
 ---
 
@@ -30,9 +33,9 @@ make dev      # 显示本地开发命令提示
 - API: http://localhost:8081
 - PostgreSQL: localhost:5434
 
-### 前端本地开发
+### Web 前端本地开发
 ```bash
-cd web
+cd apps/web
 npm install              # 安装依赖
 npm run dev              # 启动开发服务器（http://localhost:5173）
 npm run build            # 生产构建
@@ -41,6 +44,15 @@ npm run test:watch       # 监听模式运行测试
 npx vitest run <file>    # 运行单个测试文件
 npm run preview          # 预览构建结果
 ```
+
+### iOS 原生端（Expo）
+```bash
+cd apps/native
+npm install              # 安装依赖
+npx expo start           # 启动 Expo dev server（扫码或模拟器运行）
+npm test                 # 运行 jest 测试
+```
+> 注意：`apps/native/` 是独立 npm 工程，不与 `apps/web/` 共享 node_modules。
 
 ### 后端本地开发
 ```bash
@@ -54,16 +66,31 @@ go test ./handlers -run TestName  # 运行单个测试
 
 ### TypeScript 类型检查
 ```bash
-cd web
+cd apps/web
 npm run typecheck         # 类型检查（等同于 npx tsc --noEmit）
 ```
 
 ### 代码风格检查和格式化
 ```bash
-cd web
+cd apps/web
 npm run lint              # 检查 src 目录下的 TS/TSX 文件
 npm run lint:fix          # 自动修复可修复的问题
 npm run format            # Prettier 格式化 src 目录
+```
+
+> ⚠️ `Makefile` 的 `test` / `typecheck` / `dev` 目标里写的是 `cd web`，与实际目录 `apps/web` 不一致——直接 `cd apps/web` 跑 npm 命令最稳。修复 Makefile 时请同步这三处。
+
+### Makefile 常用命令（项目根目录）
+```bash
+make build    # 构建 Docker 镜像
+make up       # 启动所有服务
+make down     # 停止所有服务
+make restart  # 重启所有服务
+make logs     # 查看服务日志
+make clean    # 清理容器和镜像（含数据卷）
+make test     # 运行前端测试
+make typecheck  # 前端 TypeScript 类型检查
+make dev      # 显示本地开发命令
 ```
 
 ---
@@ -73,13 +100,14 @@ npm run format            # Prettier 格式化 src 目录
 ### 目录结构
 ```
 my-quiz/
-├── web/                    # 前端 React 应用
+├── apps/
+│   ├── web/                # React Web 应用（前端）
+│   └── native/             # React Native iOS 应用（Expo）
+├── packages/               # 共享代码包
 ├── server/                 # Go 后端 API
-├── database/               # 转换脚本和原始数据文件
-│   ├── database/           # PostgreSQL 数据存储（Docker 卷挂载点，git 忽略）
-│   ├── raw/                # 原始题目 JSON 文件（可选，不提交到 git）
-│   └── scripts/            # 格式转换脚本（PDF/Markdown 批量导入工具）
 ├── docs/                   # 项目文档（PRD、用户指南、开发指南）
+├── tools/
+│   └── postman/            # Postman API 测试配置
 ├── uploads/                # 用户上传文件（git 忽略）
 ├── Makefile                # Docker 部署命令
 └── docker-compose.yml      # Docker Compose 配置（PostgreSQL + server + web）
@@ -90,71 +118,89 @@ my-quiz/
 - 不将题库数据提交到 git 代码库，只保留转换脚本
 - PostgreSQL 运行在本地 Docker 容器中，数据存储在 Docker 卷
 
-### 前端架构（web/）
+### 前端架构（apps/web/）
 
-**核心文件：**
-- `web/src/types.ts` - 所有 TypeScript 类型定义（Question, ExamRef, AnswerRecord, SavedQuizProgress 等）
-- `web/src/main.tsx` - 应用入口
-- `web/src/App.tsx` - 主应用，底部 Tab 路由和全局刷题状态管理
-- `web/src/api/client.ts` - 后端 API 客户端封装（含单元测试）
-- `web/src/index.css` - 全局样式
-- `web/src/db.ts` - 兼容旧版 IndexedDB（已弃用，保留用于数据迁移）
+**关键约定（理解组件前先看这些）：**
+- `src/App.tsx` 是**全局刷题状态的唯一持有者**：currentIndex / selectedAnswer / showResult / correctCount 等都在这里，子组件通过回调上抛事件，不要在 `QuizCard` 等子组件里复制一份本地状态。
+- `src/api/client.ts` 是**后端唯一入口**：所有 fetch 调用集中在此，按领域分 `questionApi` / `examApi` / `recordApi` / `sessionApi` / `uploadApi` / `authApi`，新增接口请加在对应 namespace 下，不要在组件里直接 fetch。
+- `src/types.ts` 是**前后端类型契约**（Question / ExamRef / AnswerRecord / SavedQuizProgress 等），加字段时要同步后端 model 和此文件。
+- `src/db.ts` 是**已弃用的 IndexedDB 适配层**，仅保留旧用户数据迁移用途，不要往里加新逻辑。
+- `src/utils/progressStorage.ts` 是**localStorage 本地兜底**，与后端 `/api/session` 是双写关系，断网时用 localStorage，恢复时优先后端。
 
-**组件：**
-- `QuizCard.tsx` - 刷题卡片，显示题目内容、图片、选项，处理用户作答，记录答案到后端，显示解析
-- `QuizCard.test.tsx` - 刷题卡片单元测试
-- `QuestionList.tsx` - 题目列表管理，按考试分组，支持删除题目
-- `QuestionForm.tsx` - 添加/编辑题目表单，支持三种题型
-- `ExamSelector.tsx` - 按考试分类选择，支持选择整卷刷题或随机刷题
-- `ContinueQuizModal.tsx` - 未完成刷题进度恢复弹窗
-- `QuizFinishModal.tsx` - 刷题完成统计弹窗
-- `WrongNotes.tsx` - 错题本，显示所有答错题目，支持错题重刷
-- `Profile.tsx` - 用户统计信息、深色模式切换、导入导出入口
-- `ImportExport.tsx` - 题目批量导入导出组件
-- `FileManager.tsx` - 文件管理器，管理上传的 PDF/图片文件
+**技术：** React 18 + TypeScript 5 + Tailwind + Vite + Vitest + RTL；PWA + Service Worker 离线缓存。
 
-**上下文和工具：**
-- `web/src/context/ThemeContext.tsx` - React Context，提供深色/浅色主题切换
-- `web/src/utils/import.ts` - 题目导入验证和解析
-- `web/src/utils/progressStorage.ts` - 未完成刷题进度本地存储（localStorage）
+### 原生端架构（apps/native/）
 
-**技术：**
-- React 18 + TypeScript 5
-- Tailwind CSS 原子化样式
-- Vite 构建工具
-- Vitest + React Testing Library 测试框架
-- PWA + Service Worker 离线缓存
-- localStorage 本地缓存未完成进度
+- 独立的 Expo Router 工程（`expo-router/entry`），与 `apps/web/` 不共享代码或 node_modules。
+- React 19 + React Native 0.81，Tab 路由位于 `app/`，可复用资源放 `assets/` / `components/` / `constants/` / `hooks/`。
+- 调用同一个后端 API；调用时请务必在请求头带上 `X-Client-Type: mobile` / `X-Platform: ios|android` / `X-App-Version` / `X-Device-Id`，便于服务端 `ClientInfoMiddleware` 识别。
+
+**关键约定（理解组件前先看这些）：**
+- `api/client.ts` 是**后端唯一入口**：所有 fetch 集中在此，按领域分 `authApi` / `userApi` / `questionApi` / `examApi` / `recordApi` / `sessionApi`，自动注入多端 Header 和 `Authorization: Bearer <jwt>`，401 触发 `unauthorizedHandler` 回调。**不要**在组件里直接 fetch。
+- `store/authStore.ts`（zustand）是**登录态唯一持有者**：JWT 持久化到 `expo-secure-store`，App 启动调一次 `bootstrap()` 恢复 token + 拉 user + 绑 401 回调。组件通过 selector 订阅 `token` / `user` / `bootstrapping`。
+- `utils/device.ts` 是**多端 Header 来源**：`getDeviceId()` 用 SecureStore 持久化（异步），`APP_VERSION` 从 `expo-constants` 读 `app.json`，`PLATFORM` 用 `Platform.OS`。
+- `types.ts` 是**与 web 同步的类型契约**（Question / Exam / AnswerRecord / QuizSession + 原生独有的 User / AuthResponse），文件头部写明同步源；加字段时要同步后端 model + web 端 + 此文件三处。
+- 路由网关：根 `app/_layout.tsx` 调 `bootstrap()`，`app/(tabs)/_layout.tsx` 在 `bootstrapping` 期间渲染空、`token` 为空时 `<Redirect href="/login">`。新增登录态保护的 stack 时复用这个模式。
+- API base URL 解析顺序：`EXPO_PUBLIC_API_URL` 环境变量 → `app.json` 的 `expo.extra.apiUrl` → 平台默认（iOS 模拟器 `localhost:8081`、Android 模拟器 `10.0.2.2:8081`）。**真机调试必须**通过 `EXPO_PUBLIC_API_URL` 指向 Mac 的 LAN IP。
 
 ### 后端架构（server/）
 
-**核心文件：**
-- `server/main.go` - 入口，启动 Gin 引擎，注册路由
-- `server/config/config.go` - 配置加载和数据库连接（GORM）
-- `server/handlers/question.go` - 题目 CRUD 接口
-- `server/handlers/question_test.go` - 题目接口单元测试（10 个测试）
-- `server/handlers/record.go` - 答题记录接口
-- `server/handlers/record_test.go` - 答题记录单元测试（5 个测试）
-- `server/handlers/session.go` - 未完成刷题会话接口（跨设备同步）
-- `server/handlers/session_test.go` - 会话接口单元测试（4 个测试）
-- `server/handlers/upload.go` - 文件上传管理接口
-- `server/handlers/upload_test.go` - 文件上传单元测试（9 个测试）
-- `server/models/question.go` - 数据模型定义（题目、答题记录、刷题会话）
-- `server/models/upload.go` - 上传文件数据模型
+**核心目录：**
+- `server/main.go` - 入口，启动 Gin 引擎，注册路由（`/health` + `/api/*`）
+- `server/config/config.go` - 配置加载和数据库连接（GORM + PostgreSQL）
+- `server/middleware/` - Gin 中间件
+  - `jwt_auth.go` - JWT 认证中间件，保护需登录接口
+  - `client_info.go` - **多端识别中间件**：解析 `X-Client-Type` / `X-App-Version` / `X-Device-Id` / `X-Platform` Header（缺失时从 User-Agent 兜底推断），结果存入 Gin Context 由 `middleware.GetClient(c)` 取用，全局注册
+- `server/handlers/` - HTTP 处理器（每个领域一对 `*.go` + `*_test.go`）：`auth`, `user`, `question`, `exam`, `record`, `session`, `upload`
+- `server/models/` - GORM 模型：`user`, `question`（含 Exam / AnswerRecord / QuizSession）, `upload`, `email_verification`, `password_reset`
+- `server/utils/` - 工具包：`email.go`（邮件发送）、`random.go`（验证码/Token 随机串）
+- `server/async/task_pool.go` - **轻量异步任务池**：进程内 Goroutine 池（默认 5 worker / 队列 100），通过 `async.Submit(fn)` 提交非核心任务（如发邮件）；`init()` 自动启动；调用方不要阻塞 worker
 
 **API 路由：**
+
+**公开接口（无需认证）：**
+- `GET /health` - 健康检查
+- `POST /api/auth/register` - 用户注册（bcrypt 密码哈希，邮箱必填，默认未验证）
+- `POST /api/auth/login` - 用户登录（返回 JWT Token，有效期 7 天）
+- `POST /api/auth/verify-email` - 提交邮箱验证码完成验证
+- `POST /api/auth/resend-verification` - 重发邮箱验证码
+- `POST /api/auth/forgot-password` - 申请密码重置（发送邮件 Token）
+- `POST /api/auth/reset-password` - 用 Token 完成密码重置
+
+**需要 JWT 认证的接口（Authorization: Bearer <token>）：**
+
+**调试：**
+- `GET /api/debug/client-info` - 回显当前请求被 `ClientInfoMiddleware` 解析出的端信息，便于多端联调
+
+**用户管理：**
+- `GET /api/user/me` - 获取当前登录用户信息
+- `PUT /api/user/me` - 更新当前用户信息
+
+**题目管理：**
 - `GET /api/questions` - 获取题目列表（支持按考试、类型、标签筛选）
 - `GET /api/questions/:id` - 获取单个题目
 - `POST /api/questions` - 创建题目
 - `PUT /api/questions/:id` - 更新题目
 - `DELETE /api/questions/:id` - 删除题目
+
+**考试管理：**
 - `GET /api/exams` - 获取所有考试列表
+- `GET /api/exams/:id` - 获取单个考试详情
+- `POST /api/exams` - 创建考试
+- `PUT /api/exams/:id` - 更新考试
+- `DELETE /api/exams/:id` - 删除考试
+
+**答题记录：**
 - `POST /api/records` - 创建答题记录
 - `GET /api/records/:userId` - 获取用户答题记录
 - `GET /api/records/:userId/stats` - 获取用户统计信息
+
+**刷题会话（跨设备同步）：**
 - `GET /api/session/current` - 获取当前用户未完成刷题会话
 - `POST /api/session` - 创建或更新当前刷题会话
 - `DELETE /api/session/current` - 删除当前未完成刷题会话
+
+**文件上传管理：**
 - `GET /api/uploads` - 获取用户上传文件列表
 - `GET /api/uploads/:id` - 获取单个文件信息
 - `GET /api/uploads/:id/download` - 下载原文件
@@ -170,6 +216,18 @@ my-quiz/
 ---
 
 ## 数据模型
+
+### 用户（User）
+```go
+ID            int    // 数据库唯一标识（自增）
+Username      string // 用户名（唯一，3-50字符）
+Password      string // bcrypt 哈希后的密码（json:"-" 永不返回前端）
+Email         string // 邮箱（必填，注册强制）
+EmailVerified bool   // 邮箱是否已验证
+CreatedAt     int64  // 创建时间戳（毫秒）
+UpdatedAt     int64  // 更新时间戳（毫秒）
+```
+**认证机制：** JWT + bcrypt 密码哈希，Token 有效期 7 天。配套有 `email_verification` / `password_reset` 两张表存储一次性验证码/Token，邮件发送通过 `async.Submit` 走异步任务池。
 
 ### 考试（Exam）- 独立表
 ```go
@@ -249,13 +307,16 @@ UpdatedAt   int64        // 更新时间戳
 ## 开发说明
 
 ### 添加新题型步骤
-1. 更新 `web/src/types.ts` 中的 `QuestionType` 联合类型
-2. 更新 `web/src/components/QuizCard.tsx` 添加渲染逻辑
-3. 更新 `web/src/components/QuestionForm.tsx` 添加表单选项
+1. 更新 `apps/web/src/types.ts` 中的 `QuestionType` 联合类型
+2. 更新 `apps/web/src/components/QuizCard.tsx` 添加渲染逻辑
+3. 更新 `apps/web/src/components/QuestionForm.tsx` 添加表单选项
 4. 后端无需修改，使用动态 JSON 结构兼容
 
 ### 环境变量
-- 后端：`PORT` - 服务端口（默认 8080），`POSTGRES_URI` - PostgreSQL 连接字符串
+- 后端：
+  - `PORT` - 服务端口（默认 8080）
+  - `POSTGRES_URI` - PostgreSQL 连接字符串
+  - `JWT_SECRET` - JWT 签名密钥（生产环境必须设置，默认开发密钥）
 - 前端：`VITE_API_URL` - 后端 API 地址（默认 `http://localhost:8080`）
 - 默认连接字符串（Docker）：`postgres://postgres:postgres@postgres:5432/my-quiz?sslmode=disable`
 
@@ -265,17 +326,17 @@ UpdatedAt   int64        // 更新时间戳
   - 运行单个测试：`npx vitest run <file>`
 
 - **后端**：使用 Go 内置 testing 包 + SQLite 内存数据库
-  - 测试文件：`*_test.go` 与源码同目录（`server/handlers/`）
+  - 测试文件：`*_test.go` 与源码同目录（`server/handlers/`、`server/middleware/`）
   - 测试策略：每个测试使用独立的 SQLite 内存数据库，完全隔离，无需外部 PostgreSQL
   - 运行单个测试：`go test ./handlers -run TestName`
-  - 当前覆盖：question, record, session, upload 所有 handler 主要端点，共 25 个单元测试
+  - 覆盖范围：auth / user / question / exam / record / session / upload 全部 handler 主要端点，外加 `client_info` 中间件
 
 ### 代码风格和格式化
 项目使用 **ESLint + Prettier** 进行代码检查和格式化，同时用 `.editorconfig` 统一编辑器配置：
 
 **前端（JS/TS/TSX）：**
-- ESLint 配置：`web/eslint.config.js` - 基于 Google 风格 + Prettier
-- Prettier 配置：`web/.prettierrc` - 单引号、80字符行宽、2空格缩进
+- ESLint 配置：`apps/web/eslint.config.js` - 基于 Google 风格 + Prettier
+- Prettier 配置：`apps/web/.prettierrc` - 单引号、80字符行宽、2空格缩进
 - 必须通过 ESLint 检查才能提交
 
 **编辑器配置（.editorconfig）：**
@@ -295,10 +356,7 @@ UpdatedAt   int64        // 更新时间戳
 - 所有业务数据存储在 PostgreSQL 中，不提交到 git 代码库
 - PostgreSQL 通过 Docker Compose 在本地容器化运行
 - 后端使用 GORM ORM 操作数据库
-- 保留 `web/src/db.ts` 用于旧数据迁移（用户可以从旧 IndexedDB 导出数据，再导入到新系统）
-
-### 最近架构变更
-- **v1.1+**: Exam 从题目中的嵌入式 JSONB 字段重构为独立表，通过外键关联，支持更好的数据一致性和查询
+- 保留 `apps/web/src/db.ts` 用于旧数据迁移（用户可以从旧 IndexedDB 导出数据，再导入到新系统）
 
 ### Docker 重新打包部署
 当代码修改后需要重新打包部署到本地 Docker：
@@ -351,11 +409,13 @@ QuizCard → 用户点击选项 → 回调 App 更新状态 → 调用 recordApi
 
 ## 文档参考
 
+- [README.zh-CN.md](./README.zh-CN.md) - 项目中文 README（功能特性、快速开始）
 - [PRD](./docs/PRD.md) - 产品需求文档
 - [用户文档](./docs/user-guide/README.md) - 使用指南
 - [开发者文档](./docs/developer-guide/README.md) - 详细开发指南
 - [架构文档](./docs/developer-guide/architecture.md) - 详细架构说明
 - [题目格式规范](./docs/question-schema.md) - JSON Schema 定义
+- [API 测试用例](./docs/API接口测试用例.md) - 接口手测脚本与示例
 
 ---
 
