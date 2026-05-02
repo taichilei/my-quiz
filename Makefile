@@ -16,7 +16,7 @@ help:
 
 # 构建 Docker 镜像
 build:
-	docker build -t my-quiz/web:latest -f web/Dockerfile web/
+	docker build -t my-quiz/web:latest -f apps/web/Dockerfile apps/web/
 	docker build -t my-quiz/server:latest -f server/Dockerfile server/
 
 # 启动所有服务（使用 docker-compose）
