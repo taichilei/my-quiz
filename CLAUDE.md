@@ -50,7 +50,11 @@ npm run preview          # 预览构建结果
 cd apps/native
 npm install              # 安装依赖
 npx expo start           # 启动 Expo dev server（扫码或模拟器运行）
-npm test                 # 运行 jest 测试
+npm run ios              # 直接拉起 iOS 模拟器
+npm run android          # 直接拉起 Android 模拟器
+npm test                 # 运行 jest 测试（jest-expo preset）
+npm run lint             # expo lint（基于 eslint-config-expo）
+npm run format           # Prettier 格式化全工程
 ```
 > 注意：`apps/native/` 是独立 npm 工程，不与 `apps/web/` 共享 node_modules。
 
@@ -409,7 +413,6 @@ QuizCard → 用户点击选项 → 回调 App 更新状态 → 调用 recordApi
 
 ## 文档参考
 
-- [README.zh-CN.md](./README.zh-CN.md) - 项目中文 README（功能特性、快速开始）
 - [PRD](./docs/PRD.md) - 产品需求文档
 - [用户文档](./docs/user-guide/README.md) - 使用指南
 - [开发者文档](./docs/developer-guide/README.md) - 详细开发指南
