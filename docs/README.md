@@ -23,9 +23,12 @@
 |------|------|
 | [开发指南](./developer-guide/README.md) | 开发者入门 |
 | [项目架构](./developer-guide/architecture.md) | 技术栈、目录结构 |
+| [后端架构](./developer-guide/backend-architecture.md) | Go + Gin + GORM + PostgreSQL |
 | [本地开发](./developer-guide/getting-started.md) | 环境搭建、运行调试 |
+| [测试指南](./developer-guide/测试指南.md) | 前后端测试约定 |
 | [题目格式规范](./question-schema.md) | JSON Schema 定义 |
-| [贡献指南](./developer-guide/contributing.md) | 如何贡献代码/题库 |
+| [贡献指南](../CONTRIBUTING.md) | 如何贡献代码/题库 |
+| [项目全景与命令](../CLAUDE.md) | 一份文档看懂所有目录与命令 |
 
 ### 参考资料
 
@@ -33,16 +36,9 @@
 |------|------|
 | [行业调研报告](./industry-research.md) | 主流题目数据格式分析 |
 
-## 快速链接
-
-- [在线演示](#)（待部署）
-- [GitHub 仓库](#)
-- [问题反馈](#)
-
 ## 项目特色
 
 - **开源免费**：打破教育机构信息差
-- **离线可用**：PWA 支持，无需联网
-- **数据自主**：所有数据存储在本地浏览器
-- **易于贡献**：JSON 格式题库，简单易懂
-- **跨平台**：支持 iOS/Android/PC 浏览器
+- **多端覆盖**：Web（PWA 离线）+ 原生 iOS / Android + Go 后端 API
+- **多设备同步**：登录后题库、答题进度、错题本跨设备同步（v1.x 起）
+- **批量导入**：支持 JSON 题库批量导入与上传文件解析
