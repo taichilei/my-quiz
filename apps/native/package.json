@@ -2,6 +2,11 @@
   "name": "native",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "ChiLei Tai",
+    "email": "qilei.dai@qq.com"
+  },
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
