@@ -82,8 +82,6 @@ npm run lint:fix          # 自动修复可修复的问题
 npm run format            # Prettier 格式化 src 目录
 ```
 
-> ⚠️ `Makefile` 的 `test` / `typecheck` / `dev` 目标里写的是 `cd web`，与实际目录 `apps/web` 不一致——直接 `cd apps/web` 跑 npm 命令最稳。修复 Makefile 时请同步这三处。
-
 ### Makefile 常用命令（项目根目录）
 ```bash
 make build    # 构建 Docker 镜像

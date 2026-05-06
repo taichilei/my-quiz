@@ -46,14 +46,15 @@ clean:
 
 # 运行测试
 test:
-	cd web && npm test
+	cd apps/web && npm test
 
 # 类型检查
 typecheck:
-	cd web && npm run typecheck
+	cd apps/web && npm run typecheck
 
 # 本地开发（需要先安装依赖）
 dev:
 	@echo "启动本地开发..."
-	@echo "前端: cd web && npm run dev"
+	@echo "Web 前端: cd apps/web && npm run dev"
+	@echo "iOS 原生: cd apps/native && npx expo start"
 	@echo "后端: cd server && go run main.go"
