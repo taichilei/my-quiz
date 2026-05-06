@@ -1,0 +1,48 @@
+name: 🚀 Feature
+description: 提一个新功能
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 做什么
+      description: 简洁描述要做的功能
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 为什么
+      description: 解决了什么痛点？给用户/自己带来什么？
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完成标志
+      description: 满足哪些条件才算"做完了"
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 涉及端
+      options:
+        - label: Web (apps/web)
+        - label: iOS / Android (apps/native)
+        - label: 后端 (server)
+        - label: 文档 (docs)
+  - type: textarea
+    id: plan
+    attributes:
+      label: 技术方案（可选）
+      description: 大致怎么实现，涉及哪些文件/模块
+  - type: textarea
+    id: refs
+    attributes:
+      label: 关联（可选）
+      description: 依赖、风险、参考链接、相关 issue

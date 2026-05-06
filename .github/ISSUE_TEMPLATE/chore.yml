@@ -1,0 +1,30 @@
+name: 🔧 Chore
+description: 维护性杂务（依赖、CI、构建、工具配置、Lint 等）
+title: "[Chore] "
+labels: ["chore"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 做什么
+      placeholder: 例：升级 gorm 到最新 minor
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 为什么
+      placeholder: 例：当前版本和 testcontainers 的 PG driver 有兼容警告
+    validations:
+      required: true
+  - type: input
+    id: done
+    attributes:
+      label: 完成标志
+      placeholder: 例：go test ./... 全绿且无 deprecation warning
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: 关联（可选）

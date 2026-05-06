@@ -1,0 +1,41 @@
+name: 🐛 Bug
+description: 报告一个 bug
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 现象
+      description: 一两句话说清楚什么坏了
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. ...
+        2. ...
+        3. 看到 ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 影响端
+      options:
+        - label: Web (apps/web)
+        - label: iOS / Android (apps/native)
+        - label: 后端 (server)
+        - label: Docker / 部署
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为（可选）
+      description: 如果不明显，写一下应该是什么样
+  - type: textarea
+    id: refs
+    attributes:
+      label: 备注（可选）
+      description: 截图、日志、报错信息、相关 commit/PR 链接

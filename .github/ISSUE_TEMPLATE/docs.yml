@@ -1,0 +1,30 @@
+name: 📝 Docs
+description: 文档相关（README、CLAUDE.md、API 文档、注释、PRD 等）
+title: "[Docs] "
+labels: ["docs"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 做什么
+      placeholder: 例：CLAUDE.md "测试" 段落同步到 testcontainers 方案
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 为什么
+      placeholder: 例：Phase 1 切换后旧描述会误导未来的我
+    validations:
+      required: true
+  - type: input
+    id: done
+    attributes:
+      label: 完成标志
+      placeholder: 例：CLAUDE.md 已更新，搜不到 "SQLite 内存数据库" 字样
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: 关联（可选）
