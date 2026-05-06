@@ -25,8 +25,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/my-quiz.git
-cd my-quiz/web
+git clone https://github.com/taichilei/my-quiz.git
+cd my-quiz/apps/web
 
 # 安装依赖
 npm install
