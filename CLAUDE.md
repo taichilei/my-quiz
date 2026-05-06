@@ -327,9 +327,10 @@ UpdatedAt   int64        // 更新时间戳
   - 测试文件：`*.test.ts` 或 `*.test.tsx` 与源码同目录
   - 运行单个测试：`npx vitest run <file>`
 
-- **后端**：使用 Go 内置 testing 包 + SQLite 内存数据库
+- **后端**：使用 Go 内置 testing 包 + testcontainers-go + PostgreSQL
   - 测试文件：`*_test.go` 与源码同目录（`server/handlers/`、`server/middleware/`）
-  - 测试策略：每个测试使用独立的 SQLite 内存数据库，完全隔离，无需外部 PostgreSQL
+  - 测试策略：使用 testcontainers-go 启动临时 PostgreSQL 容器，所有测试共享一个容器实例，每个测试前自动清理数据，确保测试与生产环境一致
+  - 运行条件：本机和 CI 必须可用 Docker daemon
   - 运行单个测试：`go test ./handlers -run TestName`
   - 覆盖范围：auth / user / question / exam / record / session / upload 全部 handler 主要端点，外加 `client_info` 中间件
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ import (
 // TestGetStats_Empty tests GetStats when no records exist
 func TestGetStats_Empty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewRecordHandler(db)
 
 	r := gin.Default()
@@ -46,25 +47,25 @@ func TestGetStats_Empty(t *testing.T) {
 // TestGetStats_WithRecords tests GetStats with existing records
 func TestGetStats_WithRecords(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewRecordHandler(db)
 
 	// Insert test data: 2 records, 1 correct, 1 incorrect
 	db.Create(&models.AnswerRecord{
-		UserID:      "default-user",
-		QuestionID:  1,
-		UserAnswer:  "A",
-		IsCorrect:   true,
-		TimeSpent:   10,
-		AnsweredAt:  1234567890,
+		UserID:     "default-user",
+		QuestionID: 1,
+		UserAnswer: "A",
+		IsCorrect:  true,
+		TimeSpent:  10,
+		AnsweredAt: 1234567890,
 	})
 	db.Create(&models.AnswerRecord{
-		UserID:      "default-user",
-		QuestionID:  2,
-		UserAnswer:  "B",
-		IsCorrect:   false,
-		TimeSpent:   15,
-		AnsweredAt:  1234567891,
+		UserID:     "default-user",
+		QuestionID: 2,
+		UserAnswer: "B",
+		IsCorrect:  false,
+		TimeSpent:  15,
+		AnsweredAt: 1234567891,
 	})
 
 	r := gin.Default()
@@ -100,7 +101,7 @@ func TestGetStats_WithRecords(t *testing.T) {
 // TestGetRecords_Empty tests GetRecords when no records exist
 func TestGetRecords_Empty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewRecordHandler(db)
 
 	r := gin.Default()
@@ -129,7 +130,7 @@ func TestGetRecords_Empty(t *testing.T) {
 // TestCreateRecord tests creating a new record
 func TestCreateRecord(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewRecordHandler(db)
 
 	r := gin.Default()
@@ -149,26 +150,26 @@ func TestCreateRecord(t *testing.T) {
 // TestGetStats_DifferentUser tests stats are isolated by user ID
 func TestGetStats_DifferentUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewRecordHandler(db)
 
 	// Records for user A
 	db.Create(&models.AnswerRecord{
-		UserID:      "user-a",
-		QuestionID:  1,
-		IsCorrect:   true,
+		UserID:     "user-a",
+		QuestionID: 1,
+		IsCorrect:  true,
 	})
 	db.Create(&models.AnswerRecord{
-		UserID:      "user-a",
-		QuestionID:  2,
-		IsCorrect:   true,
+		UserID:     "user-a",
+		QuestionID: 2,
+		IsCorrect:  true,
 	})
 
 	// One record for user B
 	db.Create(&models.AnswerRecord{
-		UserID:      "user-b",
-		QuestionID:  1,
-		IsCorrect:   false,
+		UserID:     "user-b",
+		QuestionID: 1,
+		IsCorrect:  false,
 	})
 
 	r := gin.Default()

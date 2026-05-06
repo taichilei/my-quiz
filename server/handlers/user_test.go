@@ -12,6 +12,7 @@ import (
 
 	"my-quiz/middleware"
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,7 @@ import (
 // TestGetMe_Success 测试带有效token获取用户信息
 func TestGetMe_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	authHandler := NewAuthHandler(db)
 	userHandler := NewUserHandler(db)
 
@@ -69,7 +70,7 @@ func TestGetMe_Success(t *testing.T) {
 // TestGetMe_NoToken 测试不带token访问受保护接口
 func TestGetMe_NoToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUserHandler(db)
 
 	r := gin.Default()
@@ -87,7 +88,7 @@ func TestGetMe_NoToken(t *testing.T) {
 // TestGetMe_InvalidToken 测试带无效token
 func TestGetMe_InvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUserHandler(db)
 
 	r := gin.Default()
@@ -106,7 +107,7 @@ func TestGetMe_InvalidToken(t *testing.T) {
 // TestUpdateMe_Success 测试正常更新用户邮箱
 func TestUpdateMe_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	authHandler := NewAuthHandler(db)
 	userHandler := NewUserHandler(db)
 
@@ -180,7 +181,7 @@ func TestUpdateMe_Success(t *testing.T) {
 // TestUpdateMe_EmailUnchanged 测试请求体邮箱与当前邮箱相同时不重发验证邮件
 func TestUpdateMe_EmailUnchanged(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	authHandler := NewAuthHandler(db)
 	userHandler := NewUserHandler(db)
 

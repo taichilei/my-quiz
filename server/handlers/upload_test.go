@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ import (
 // TestList_UploadsEmpty tests List when no uploads exist
 func TestList_UploadsEmpty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	r := gin.Default()
@@ -43,7 +44,7 @@ func TestList_UploadsEmpty(t *testing.T) {
 // TestList_UploadsWithData tests List returns existing uploads
 func TestList_UploadsWithData(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	// Insert test uploads with different timestamps to ensure correct ordering
@@ -85,7 +86,7 @@ func TestList_UploadsWithData(t *testing.T) {
 // TestGet_UploadExists tests Get returns an existing upload
 func TestGet_UploadExists(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	u := models.NewUpload("default-user", "test.pdf", "pdf", "uploads/test.pdf", 1024)
@@ -130,7 +131,7 @@ func TestGet_UploadExists(t *testing.T) {
 // TestGet_UploadNotFound tests Get for non-existent upload
 func TestGet_UploadNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	r := gin.Default()
@@ -149,7 +150,7 @@ func TestGet_UploadNotFound(t *testing.T) {
 // TestGet_InvalidID tests Get with invalid ID format
 func TestGet_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	r := gin.Default()
@@ -168,7 +169,7 @@ func TestGet_InvalidID(t *testing.T) {
 // TestDelete_Upload tests deleting an existing upload
 func TestDelete_Upload(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	// Insert an upload
@@ -202,7 +203,7 @@ func TestDelete_Upload(t *testing.T) {
 // TestUpdate_ChangesTitle tests updating upload title and description
 func TestUpdate_ChangesTitle(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewUploadHandler(db)
 
 	// Insert initial upload

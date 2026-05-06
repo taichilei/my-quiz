@@ -1,57 +1,24 @@
 // Package handlers 单元测试
 //
-// 使用 SQLite 内存数据库进行测试，不需要外部 PostgreSQL 依赖。
+// 使用 testcontainers + PostgreSQL 进行测试
 package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-// setupTestDB 创建一个新的 SQLite 内存数据库实例用于测试
-// 每个测试获得独立的数据库，避免测试之间数据干扰
-func setupTestDB(t *testing.T) *gorm.DB {
-	t.Helper()
-	// Use unique in-memory database for each test
-	// 不使用 cache=shared 避免测试间数据库共享
-	dbName := fmt.Sprintf("file:test-%d?mode=memory&cache=private", time.Now().UnixNano())
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	// 自动迁移所有表结构
-	err = db.AutoMigrate(
-		&models.Exam{},
-		&models.Question{},
-		&models.AnswerRecord{},
-		&models.QuizSession{},
-		&models.Upload{},
-		&models.User{},
-		&models.EmailVerification{},
-		&models.PasswordReset{},
-	)
-	if err != nil {
-		t.Fatalf("Failed to migrate database: %v", err)
-	}
-
-	return db
-}
 
 // TestGetQuestions_EmptyDB tests GetQuestions when database is empty
 func TestGetQuestions_EmptyDB(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	r := gin.Default()
@@ -80,7 +47,7 @@ func TestGetQuestions_EmptyDB(t *testing.T) {
 // TestGetQuestions_WithData tests GetQuestions returns existing questions
 func TestGetQuestions_WithData(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	// Create exams first
@@ -91,26 +58,26 @@ func TestGetQuestions_WithData(t *testing.T) {
 
 	// Insert test data
 	q1 := models.Question{
-		Type:        "single",
-		Content:     "Test question 1",
-		Options:     []string{"A", "B", "C", "D"},
-		Answer:      "A",
-		ExamID:      &exam1.ID,
-		Exam:        &exam1,
-		ExamOrder:   1,
-		Difficulty:  1,
+		Type:       "single",
+		Content:    "Test question 1",
+		Options:    []string{"A", "B", "C", "D"},
+		Answer:     "A",
+		ExamID:     &exam1.ID,
+		Exam:       &exam1,
+		ExamOrder:  1,
+		Difficulty: 1,
 	}
 	db.Create(&q1)
 
 	q2 := models.Question{
-		Type:        "multiple",
-		Content:     "Test question 2",
-		Options:     []string{"X", "Y", "Z"},
-		Answer:      "XY",
-		ExamID:      &exam2.ID,
-		Exam:        &exam2,
-		ExamOrder:   1,
-		Difficulty:  2,
+		Type:       "multiple",
+		Content:    "Test question 2",
+		Options:    []string{"X", "Y", "Z"},
+		Answer:     "XY",
+		ExamID:     &exam2.ID,
+		Exam:       &exam2,
+		ExamOrder:  1,
+		Difficulty: 2,
 	}
 	db.Create(&q2)
 
@@ -140,7 +107,7 @@ func TestGetQuestions_WithData(t *testing.T) {
 // TestGetQuestions_ByExam filters questions by exam name
 func TestGetQuestions_ByExam(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	// Create exams
@@ -151,24 +118,24 @@ func TestGetQuestions_ByExam(t *testing.T) {
 
 	// Insert test data with different exams
 	q1 := models.Question{
-		Type:        "single",
-		Content:     "Question in Test Exam",
-		Options:     []string{"A", "B"},
-		Answer:      "A",
-		ExamID:      &exam1.ID,
-		Exam:        &exam1,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "Question in Test Exam",
+		Options:   []string{"A", "B"},
+		Answer:    "A",
+		ExamID:    &exam1.ID,
+		Exam:      &exam1,
+		ExamOrder: 1,
 	}
 	db.Create(&q1)
 
 	q2 := models.Question{
-		Type:        "single",
-		Content:     "Question in Another Exam",
-		Options:     []string{"A", "B"},
-		Answer:      "A",
-		ExamID:      &exam2.ID,
-		Exam:        &exam2,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "Question in Another Exam",
+		Options:   []string{"A", "B"},
+		Answer:    "A",
+		ExamID:    &exam2.ID,
+		Exam:      &exam2,
+		ExamOrder: 1,
 	}
 	db.Create(&q2)
 
@@ -201,20 +168,20 @@ func TestGetQuestions_ByExam(t *testing.T) {
 // TestGetQuestion_Exists tests getting an existing question
 func TestGetQuestion_Exists(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	exam := models.Exam{Name: "Test", Year: 2021, Subject: "Test"}
 	db.Create(&exam)
 
 	q := models.Question{
-		Type:        "single",
-		Content:     "Test question",
-		Options:     []string{"A", "B", "C", "D"},
-		Answer:      "B",
-		ExamID:      &exam.ID,
-		Exam:        &exam,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "Test question",
+		Options:   []string{"A", "B", "C", "D"},
+		Answer:    "B",
+		ExamID:    &exam.ID,
+		Exam:      &exam,
+		ExamOrder: 1,
 	}
 	db.Create(&q)
 
@@ -247,7 +214,7 @@ func TestGetQuestion_Exists(t *testing.T) {
 // TestGetQuestion_NotFound tests getting a non-existent question
 func TestGetQuestion_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	r := gin.Default()
@@ -266,7 +233,7 @@ func TestGetQuestion_NotFound(t *testing.T) {
 // TestGetQuestion_InvalidID tests getting with invalid ID format
 func TestGetQuestion_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	r := gin.Default()
@@ -285,7 +252,7 @@ func TestGetQuestion_InvalidID(t *testing.T) {
 // TestGetExams tests getting all distinct exams
 func TestGetExams(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	// Create exams
@@ -296,25 +263,25 @@ func TestGetExams(t *testing.T) {
 
 	// Insert questions
 	db.Create(&models.Question{
-		Type:        "single",
-		Content:     "Q1",
-		ExamID:      &examA.ID,
-		Exam:        &examA,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "Q1",
+		ExamID:    &examA.ID,
+		Exam:      &examA,
+		ExamOrder: 1,
 	})
 	db.Create(&models.Question{
-		Type:        "single",
-		Content:     "Q2",
-		ExamID:      &examA.ID,
-		Exam:        &examA,
-		ExamOrder:   2,
+		Type:      "single",
+		Content:   "Q2",
+		ExamID:    &examA.ID,
+		Exam:      &examA,
+		ExamOrder: 2,
 	})
 	db.Create(&models.Question{
-		Type:        "single",
-		Content:     "Q3",
-		ExamID:      &examB.ID,
-		Exam:        &examB,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "Q3",
+		ExamID:    &examB.ID,
+		Exam:      &examB,
+		ExamOrder: 1,
 	})
 
 	r := gin.Default()
@@ -345,7 +312,7 @@ func TestGetExams(t *testing.T) {
 // TestCreateQuestion tests creating a new question
 func TestCreateQuestion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	r := gin.Default()
@@ -367,7 +334,7 @@ func TestCreateQuestion(t *testing.T) {
 // TestDeleteQuestion tests deleting an existing question
 func TestDeleteQuestion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewQuestionHandler(db)
 
 	// Create exam
@@ -376,13 +343,13 @@ func TestDeleteQuestion(t *testing.T) {
 
 	// Insert a question
 	q := models.Question{
-		Type:        "single",
-		Content:     "To be deleted",
-		Options:     []string{"A", "B"},
-		Answer:      "A",
-		ExamID:      &exam.ID,
-		Exam:        &exam,
-		ExamOrder:   1,
+		Type:      "single",
+		Content:   "To be deleted",
+		Options:   []string{"A", "B"},
+		Answer:    "A",
+		ExamID:    &exam.ID,
+		Exam:      &exam,
+		ExamOrder: 1,
 	}
 	db.Create(&q)
 

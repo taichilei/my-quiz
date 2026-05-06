@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +19,7 @@ import (
 // TestRegister_Success 测试正常注册
 func TestRegister_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -59,7 +60,7 @@ func TestRegister_Success(t *testing.T) {
 // TestRegister_DuplicateUsername 测试用户名重复注册
 func TestRegister_DuplicateUsername(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -91,7 +92,7 @@ func TestRegister_DuplicateUsername(t *testing.T) {
 // TestRegister_InvalidRequest 测试请求参数不合法
 func TestRegister_InvalidRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -113,7 +114,7 @@ func TestRegister_InvalidRequest(t *testing.T) {
 // TestLogin_Success 测试正常登录
 func TestLogin_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -158,7 +159,7 @@ func TestLogin_Success(t *testing.T) {
 // TestLogin_WrongPassword 测试密码错误
 func TestLogin_WrongPassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -187,7 +188,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 // TestLogin_UserNotFound 测试用户不存在
 func TestLogin_UserNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -209,7 +210,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 // TestLogin_UnverifiedEmail 测试未验证邮箱不能登录
 func TestLogin_UnverifiedEmail(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()
@@ -241,7 +242,7 @@ func TestLogin_UnverifiedEmail(t *testing.T) {
 // TestVerifyEmail_Success 测试邮箱验证成功
 func TestVerifyEmail_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewAuthHandler(db)
 
 	r := gin.Default()

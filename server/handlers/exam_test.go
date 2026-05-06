@@ -1,37 +1,25 @@
 // Package handlers 单元测试 - Exam CRUD
 //
-// 使用 SQLite 内存数据库进行测试，不需要外部 PostgreSQL 依赖.
+// 使用 testcontainers + PostgreSQL 进行测试
 package handlers
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 // setupExamTestDB creates a test database with Exam migration
-func setupExamTestDB(t *testing.T) (*gorm.DB, *gin.Engine) {
+func setupExamTestDB(t *testing.T) *gin.Engine {
 	t.Helper()
-	// Use unique in-memory database for each test
-	dbName := fmt.Sprintf("file:exam-test-%p?mode=memory&cache=shared", t)
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	err = db.AutoMigrate(&models.Exam{}, &models.Question{})
-	if err != nil {
-		t.Fatalf("Failed to migrate: %v", err)
-	}
+	db := testutil.SetupTestDB(t)
 
 	r := gin.Default()
 	handler := NewExamHandler(db)
@@ -44,13 +32,13 @@ func setupExamTestDB(t *testing.T) (*gorm.DB, *gin.Engine) {
 		api.DELETE("/exams/:id", handler.DeleteExam)
 	}
 
-	return db, r
+	return r
 }
 
 // TestListExams_Empty tests listing exams when empty
 func TestListExams_Empty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, r := setupExamTestDB(t)
+	r := setupExamTestDB(t)
 
 	req, _ := http.NewRequest("GET", "/api/exams", nil)
 	w := httptest.NewRecorder()
@@ -75,7 +63,7 @@ func TestListExams_Empty(t *testing.T) {
 // TestListExams_WithData tests listing exams with counts
 func TestListExams_WithData(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	// Create exams
 	exam1 := models.Exam{Name: "Exam 1", Year: 2021, Subject: "Math"}
@@ -98,6 +86,10 @@ func TestListExams_WithData(t *testing.T) {
 		Type:      "single",
 		Content:   "Q2",
 	})
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.GET("/api/exams", handler.ListExams)
 
 	req, _ := http.NewRequest("GET", "/api/exams", nil)
 	w := httptest.NewRecorder()
@@ -134,10 +126,14 @@ func TestListExams_WithData(t *testing.T) {
 // TestGetExam_Exists tests getting an existing exam
 func TestGetExam_Exists(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	exam := models.Exam{Name: "Test Exam", Year: 2021, Subject: "Test", Part: "Objective"}
 	db.Create(&exam)
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.GET("/api/exams/:id", handler.GetExam)
 
 	req, _ := http.NewRequest("GET", "/api/exams/1", nil)
 	w := httptest.NewRecorder()
@@ -165,7 +161,7 @@ func TestGetExam_Exists(t *testing.T) {
 // TestGetExam_NotFound tests getting non-existent exam
 func TestGetExam_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, r := setupExamTestDB(t)
+	r := setupExamTestDB(t)
 
 	req, _ := http.NewRequest("GET", "/api/exams/999", nil)
 	w := httptest.NewRecorder()
@@ -180,7 +176,7 @@ func TestGetExam_NotFound(t *testing.T) {
 // TestGetExam_InvalidID tests invalid ID format
 func TestGetExam_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, r := setupExamTestDB(t)
+	r := setupExamTestDB(t)
 
 	req, _ := http.NewRequest("GET", "/api/exams/not-a-number", nil)
 	w := httptest.NewRecorder()
@@ -195,7 +191,7 @@ func TestGetExam_InvalidID(t *testing.T) {
 // TestCreateExam_Success tests creating a new exam successfully
 func TestCreateExam_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, r := setupExamTestDB(t)
+	r := setupExamTestDB(t)
 
 	body := map[string]interface{}{
 		"name":    "New Exam",
@@ -229,10 +225,14 @@ func TestCreateExam_Success(t *testing.T) {
 // TestCreateExam_Duplicate tests creating duplicate exam
 func TestCreateExam_Duplicate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	// Create first
 	db.Create(&models.Exam{Name: "Duplicate", Year: 2021, Subject: "Test", Part: "A"})
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.POST("/api/exams", handler.CreateExam)
 
 	// Try to create duplicate
 	body := map[string]interface{}{
@@ -257,10 +257,14 @@ func TestCreateExam_Duplicate(t *testing.T) {
 // TestUpdateExam_Success tests updating an exam successfully
 func TestUpdateExam_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	exam := models.Exam{Name: "Original", Year: 2021, Subject: "Original"}
 	db.Create(&exam)
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.PUT("/api/exams/:id", handler.UpdateExam)
 
 	// Update
 	body := map[string]interface{}{
@@ -295,13 +299,17 @@ func TestUpdateExam_Success(t *testing.T) {
 // TestUpdateExam_DuplicateAfterUpdate tests update creates duplicate
 func TestUpdateExam_DuplicateAfterUpdate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	// Create two exams
 	exam1 := models.Exam{Name: "Exam A", Year: 2021, Subject: "A"}
 	db.Create(&exam1)
 	exam2 := models.Exam{Name: "Exam B", Year: 2021, Subject: "B"}
 	db.Create(&exam2)
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.PUT("/api/exams/:id", handler.UpdateExam)
 
 	// Try to update exam 2 to match exam 1's unique key
 	body := map[string]interface{}{
@@ -310,7 +318,7 @@ func TestUpdateExam_DuplicateAfterUpdate(t *testing.T) {
 		"subject": "A",
 	}
 	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("PUT", "/api/exams/"+fmt.Sprint(exam2.ID), bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("PUT", "/api/exams/"+string(rune(exam2.ID+'0')), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -324,7 +332,7 @@ func TestUpdateExam_DuplicateAfterUpdate(t *testing.T) {
 // TestDeleteExam_Success tests deleting an exam
 func TestDeleteExam_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, r := setupExamTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	exam := models.Exam{Name: "To Delete", Year: 2021, Subject: "Test"}
 	db.Create(&exam)
@@ -335,6 +343,10 @@ func TestDeleteExam_Success(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("Expected 1 exam before delete, got %d", count)
 	}
+
+	r := gin.Default()
+	handler := NewExamHandler(db)
+	r.DELETE("/api/exams/:id", handler.DeleteExam)
 
 	req, _ := http.NewRequest("DELETE", "/api/exams/1", nil)
 	w := httptest.NewRecorder()
@@ -355,7 +367,7 @@ func TestDeleteExam_Success(t *testing.T) {
 // TestDeleteExam_NotFound tests deleting non-existent exam
 func TestDeleteExam_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, r := setupExamTestDB(t)
+	r := setupExamTestDB(t)
 
 	req, _ := http.NewRequest("DELETE", "/api/exams/999", nil)
 	w := httptest.NewRecorder()

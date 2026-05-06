@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"my-quiz/models"
+	"my-quiz/testutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ import (
 // TestGetCurrent_NoSession tests GetCurrent when no session exists
 func TestGetCurrent_NoSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewSessionHandler(db)
 
 	r := gin.Default()
@@ -33,7 +34,7 @@ func TestGetCurrent_NoSession(t *testing.T) {
 // TestGetCurrent_WithSession tests GetCurrent returns existing session
 func TestGetCurrent_WithSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewSessionHandler(db)
 
 	// Insert a session
@@ -83,7 +84,7 @@ func TestGetCurrent_WithSession(t *testing.T) {
 // TestDeleteCurrent tests deleting current session
 func TestDeleteCurrent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewSessionHandler(db)
 
 	// Insert a session
@@ -123,7 +124,7 @@ func TestDeleteCurrent(t *testing.T) {
 // TestUpsert tests creating or updating a session returns bad request for empty body
 func TestUpsert_EmptyBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	handler := NewSessionHandler(db)
 
 	r := gin.Default()
