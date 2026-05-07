@@ -13,9 +13,13 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// 本地开发：若存在 .env 文件则加载（生产环境无该文件，静默忽略）
+	_ = godotenv.Load()
+
 	// 加载配置
 	cfg := config.Load()
 

@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL 数据库
+  # PostgreSQL 数据库（dev/full 都需要）
   postgres:
     image: postgres:16-alpine
     container_name: my-quiz-postgres
@@ -15,8 +15,26 @@ services:
     networks:
       - my-quiz-net
 
-  # 后端 API
+  # 本地邮件桩（dev/full 都需要）
+  # mailpit 是 mailhog 的现代替代：drop-in 兼容 SMTP，UI 更现代
+  mailhog:
+    image: axllent/mailpit:latest
+    container_name: my-quiz-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI: http://localhost:8025
+    environment:
+      # 接受任意 SMTP 凭据（dev 环境邮件桩，安全无所谓）
+      - MP_SMTP_AUTH_ACCEPT_ANY=true
+      # 允许在非 TLS 连接上做 PLAIN auth（Go net/smtp 默认行为）
+      - MP_SMTP_AUTH_ALLOW_INSECURE=true
+    networks:
+      - my-quiz-net
+
+  # 后端 API（仅在 --profile full 时启动）
   server:
+    profiles: ["full"]
     build:
       context: .
       dockerfile: server/Dockerfile
@@ -27,15 +45,22 @@ services:
     environment:
       - PORT=8080
       - POSTGRES_URI=postgres://postgres:postgres@postgres:5432/my-quiz?sslmode=disable
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_USERNAME=dev@my-quiz.local
+      - SMTP_PASSWORD=dev
+      - SMTP_FROM_NAME=MyQuiz
     volumes:
       - ./uploads:/app/uploads
     depends_on:
       - postgres
+      - mailhog
     networks:
       - my-quiz-net
 
-  # 前端 Web
+  # 前端 Web（仅在 --profile full 时启动）
   web:
+    profiles: ["full"]
     build:
       context: .
       dockerfile: apps/web/Dockerfile

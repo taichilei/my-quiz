@@ -10,28 +10,54 @@ My-Quiz 是一个多端刷题应用，采用前后端分离架构：
 - **后端**（`server/`）：Go + Gin + PostgreSQL（GORM），提供 RESTful API，多端共用
 - 支持多设备同步，核心功能：题目管理、随机刷题、错题本、统计信息、批量导入导出、未完成进度跨设备恢复
 
-> `packages/` 当前为空，预留作未来 Web/Native 共享包目录。
-
 ---
 
 ## 常用命令
 
-### Docker 部署（完整栈）
+### 本机开发模式（推荐日常）
+依赖跑 docker、前后端跑本机进程，改代码秒生效，可下断点。
+
 ```bash
-make build    # 构建 Docker 镜像
-make up       # 启动所有服务（PostgreSQL + server + web）
-make down     # 停止所有服务
-make restart  # 重启所有服务
-make logs     # 查看服务日志
-make clean    # 清理容器和镜像
-make test     # 运行前端测试
-make dev      # 显示本地开发命令提示
+# 首次配置（拷贝 env 模板到本地，已加入 .gitignore）
+cp server/.env.example server/.env
+cp apps/web/.env.example apps/web/.env.local
+
+# 起依赖：PostgreSQL（5434） + MailHog（SMTP 1025 / UI 8025）
+make db-up
+
+# 终端 A：后端（端口 8080）
+make server
+
+# 终端 B：前端（端口 5173，vite 热更新）
+make web
+
+# 访问
+# - Web: http://localhost:5173
+# - API: http://localhost:8080
+# - MailHog UI: http://localhost:8025（本地发出的所有邮件落在这里）
+
+# 收尾
+make db-down       # 停依赖（本机进程用 Ctrl-C 各自停）
+make db-reset      # 完全清空 PG 数据卷
 ```
 
-访问地址（Docker 启动后）：
+### 全栈 docker 模式（类生产 / 演示）
+```bash
+make build    # 构建 Docker 镜像
+make up       # 启动全栈（PG + MailHog + server + web）
+make down     # 停止全栈
+make restart  # 重启全栈
+make logs     # 查看全栈日志
+make clean    # 清理容器、镜像、数据卷
+```
+
+访问地址（全栈模式）：
 - Web UI: http://localhost:3000
 - API: http://localhost:8081
 - PostgreSQL: localhost:5434
+- MailHog UI: http://localhost:8025
+
+> **dev 与 full 不能同时跑**：两者都映射 PG 5434，端口冲突。二选一即可。
 
 ### Web 前端本地开发
 ```bash
@@ -82,19 +108,6 @@ npm run lint:fix          # 自动修复可修复的问题
 npm run format            # Prettier 格式化 src 目录
 ```
 
-### Makefile 常用命令（项目根目录）
-```bash
-make build    # 构建 Docker 镜像
-make up       # 启动所有服务
-make down     # 停止所有服务
-make restart  # 重启所有服务
-make logs     # 查看服务日志
-make clean    # 清理容器和镜像（含数据卷）
-make test     # 运行前端测试
-make typecheck  # 前端 TypeScript 类型检查
-make dev      # 显示本地开发命令
-```
-
 ---
 
 ## 代码架构
@@ -105,7 +118,6 @@ my-quiz/
 ├── apps/
 │   ├── web/                # React Web 应用（前端）
 │   └── native/             # React Native iOS 应用（Expo）
-├── packages/               # 共享代码包
 ├── server/                 # Go 后端 API
 ├── docs/                   # 项目文档（PRD、用户指南、开发指南）
 ├── tools/
@@ -156,7 +168,8 @@ my-quiz/
 - `server/handlers/` - HTTP 处理器（每个领域一对 `*.go` + `*_test.go`）：`auth`, `user`, `question`, `exam`, `record`, `session`, `upload`
 - `server/models/` - GORM 模型：`user`, `question`（含 Exam / AnswerRecord / QuizSession）, `upload`, `email_verification`, `password_reset`
 - `server/utils/` - 工具包：`email.go`（邮件发送）、`random.go`（验证码/Token 随机串）
-- `server/async/task_pool.go` - **轻量异步任务池**：进程内 Goroutine 池（默认 5 worker / 队列 100），通过 `async.Submit(fn)` 提交非核心任务（如发邮件）；`init()` 自动启动；调用方不要阻塞 worker
+- `server/async/task_pool.go` - **轻量异步任务池**：进程内 Goroutine 池（默认 5 worker / 队列 100），通过 `async.Submit(fn)` 提交非核心任务（如发邮件）；`init()` 自动启动。**`Submit` 不阻塞**：队列满时直接丢弃任务并打 `WARN` 日志，调用方不能依赖任务一定被执行（关键链路必须同步执行或自己实现持久化重试）；worker 内任务也不要做长阻塞操作，避免堆积
+- `server/testutil/testdb.go` - **后端测试基础设施**：testcontainers-go 启动一次 PostgreSQL 容器，所有测试共用；通过 `testutil.SetupTestDB(t)` 拿到干净 `*gorm.DB`（自动 AutoMigrate + 清表）。新增 `*_test.go` 时一律用它，不要手搓 sqlite/mock
 
 **API 路由：**
 
@@ -330,6 +343,7 @@ UpdatedAt   int64        // 更新时间戳
 - **后端**：使用 Go 内置 testing 包 + testcontainers-go + PostgreSQL
   - 测试文件：`*_test.go` 与源码同目录（`server/handlers/`、`server/middleware/`）
   - 测试策略：使用 testcontainers-go 启动临时 PostgreSQL 容器，所有测试共享一个容器实例，每个测试前自动清理数据，确保测试与生产环境一致
+  - **不要在测试里使用 `t.Parallel()`**：全部用例共用同一个 PG 容器，`testutil.SetupTestDB` 通过 `TRUNCATE ... RESTART IDENTITY CASCADE` 清表；并发执行会互相清掉对方的数据。新增测试必须串行
   - 运行条件：本机和 CI 必须可用 Docker daemon
   - 运行单个测试：`go test ./handlers -run TestName`
   - 覆盖范围：auth / user / question / exam / record / session / upload 全部 handler 主要端点，外加 `client_info` 中间件
@@ -352,6 +366,8 @@ UpdatedAt   int64        // 更新时间戳
 缩进规范总结：
 - JS/TS/TSX/React/CSS/其他前端：**2 空格**
 - Go：**4 空格 / tab**
+
+**提交信息约定：** Conventional Commits + 中文描述（type/scope 用英文，正文用中文）。常见 type：`feat` / `fix` / `refactor` / `docs` / `chore` / `test`；scope 写模块（如 `auth`、`server`、`web`、`native`、`async`、`github`）。例：`feat(auth): 邮箱必填注册并在邮箱变更后触发重新验证`、`refactor(server): 测试切到 testcontainers + 真 PostgreSQL`。生成新 commit 前先 `git log` 看最近若干条对齐风格。
 
 ### 数据库迁移
 - 当前项目已从**纯前端 IndexedDB 本地存储**架构演进为**前后端分离 + PostgreSQL**架构
