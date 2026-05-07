@@ -47,7 +47,16 @@ func (c *Config) Connect() (*gorm.DB, error) {
 	log.Println("Connected to PostgreSQL with GORM")
 
 	// AutoMigrate 创建/更新表结构
-	if err := db.AutoMigrate(&models.Exam{}, &models.Question{}, &models.AnswerRecord{}, &models.QuizSession{}, &models.Upload{}, &models.User{}); err != nil {
+	if err := db.AutoMigrate(
+		&models.Exam{},
+		&models.Question{},
+		&models.AnswerRecord{},
+		&models.QuizSession{},
+		&models.Upload{},
+		&models.User{},
+		&models.EmailVerification{},
+		&models.PasswordReset{},
+	); err != nil {
 		return nil, fmt.Errorf("failed to auto-migrate: %w", err)
 	}
 
