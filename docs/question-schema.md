@@ -1,7 +1,7 @@
 # 题目数据格式规范 (Question Schema)
 
-> 版本：1.0.0
-> 更新日期：2026-03-14
+> 版本：1.1.0
+> 更新日期：2026-05-08
 
 ## 一、概述
 
@@ -10,7 +10,18 @@
 - **简洁**：核心字段少，贡献者友好
 - **可选**：扩展字段均为可选，不强制填写
 - **国际化友好**：枚举值使用英文，显示层由 i18n 处理
-- **离线可用**：图片采用本地文件 + 相对路径
+- **可演进**：导入文件携带 `schemaVersion`，未来字段变更可识别老文件
+
+### 1.1 v1.1.0 关键变更
+
+| # | 变更 | 影响 |
+|---|------|------|
+| 1 | 拆分 `sourceId`（导入幂等键，string）和 `id`（系统主键，number） | 导入文件填 `sourceId`；`id` 由后端自增 |
+| 2 | 判断题答案改 `string` `"true"` / `"false"` | 与后端 `Answer string` 对齐，少一层序列化 |
+| 3 | `createdAt` 改可选 | 缺省由服务端填 server time |
+| 4 | `metadata.schemaVersion` 必填 | 用于版本识别与未来兼容 |
+| 5 | 多选答案规则明确：字母大写、逗号分隔、字典序排好 | 避免 `"a,b"` `"B,A"` 等不一致 |
+| 6 | 文件形态固化为「单 JSON + metadata wrapper」 | 目录形态（含 images/）留给后续版本 |
 
 ---
 
@@ -22,11 +33,11 @@
 type QuestionType = 'single' | 'multiple' | 'judge';
 ```
 
-| 值 | 说明 | 答案类型 |
-|----|------|----------|
-| `single` | 单选题 | string，如 `"A"` |
-| `multiple` | 多选题 | string，如 `"A,B,C"` |
-| `judge` | 判断题 | boolean，`true` 或 `false` |
+| 值 | 说明 |
+|----|------|
+| `single` | 单选题 |
+| `multiple` | 多选题 |
+| `judge` | 判断题 |
 
 ### 2.2 难度等级 (Difficulty)
 
@@ -40,59 +51,75 @@ type Difficulty = 1 | 2 | 3;
 | `2` | 中等 |
 | `3` | 困难 |
 
-### 2.3 考试归属 (ExamRef)
+### 2.3 答案格式 (Answer)
+
+**所有题型答案均为字符串。** 这是 v1.1 的统一规则。
+
+| 题型 | 类型 | 规则 | 示例 |
+|------|------|------|------|
+| `single` | string | 单个字母大写 | `"A"` |
+| `multiple` | string | 字母大写、逗号分隔、**字典序排好** | `"A,B,C"` |
+| `judge` | string | `"true"` / `"false"`（小写、不带引号嵌套） | `"true"` |
+
+**多选反例：** `"a,b,c"` / `"B,A,C"` / `"A, B, C"`（带空格）均**不合规**。
+
+### 2.4 考试归属 (ExamRef)
 
 ```typescript
 interface ExamRef {
-  name: string;       // 考试名称，如"2017年下半年江苏省事业单位招聘考试"
-  year?: number;      // 年份，如 2017
-  subject?: string;   // 科目，如"综合知识和能力素质"
-  part: string;       // 部分，如"客观题"、"专业知识"、"实务题"
-  order: number;      // 该部分内的题号，从 1 开始
+  name: string;       // 必填，如"数据库习题"
+  part: string;       // 必填，如"习题1"、"客观题"、"专业知识"
+  year?: number;      // 可选，如 2017
+  subject?: string;   // 可选，如"综合知识和能力素质"
 }
 ```
 
-### 2.4 作答记录 (AnswerRecord)
+> 导入文件里 `exam` 字段是 **嵌入式 ExamRef**，不写 `examId`。后端按 `(name, year, subject, part)` 复合唯一键 **upsert** 到 `exams` 表，同一组合多次导入不会建多个 exam。
 
-```typescript
-interface AnswerRecord {
-  answeredAt: number;           // 作答时间戳（毫秒）
-  userAnswer: string | boolean; // 用户答案
-  isCorrect: boolean;           // 是否正确
-  timeSpent?: number;           // 作答耗时（秒）
-}
-```
-
-### 2.5 图片引用 (ImageRef)
-
-```typescript
-type ImageRef = string;  // 相对路径，如 "./images/2017_obj_15.png"
-```
-
-### 2.6 完整题目 (Question)
+### 2.5 完整题目 (Question)
 
 ```typescript
 interface Question {
   // ===== 必填字段 =====
-  id: string;                      // 唯一标识
+  sourceId: string;                // 业务幂等键（见 §3.1）
   type: QuestionType;              // 题型
   content: string;                 // 题干内容
-  answer: string | boolean;        // 答案
-  createdAt: number;               // 创建时间戳（毫秒）
+  answer: string;                  // 答案（统一字符串，见 §2.3）
 
   // ===== 选择题必填 =====
-  options?: string[];              // 选项数组，顺序对应 A/B/C/D
+  options?: string[];              // 选项数组，按 A/B/C/D 顺序
 
   // ===== 可选字段 =====
-  exam?: ExamRef;                  // 所属考试信息
+  exam?: ExamRef;                  // 所属考试（嵌入式）
+  examOrder?: number;              // 题目在考试中的序号
   explanation?: string;            // 解析
-  difficulty?: Difficulty;         // 难度等级
+  difficulty?: Difficulty;         // 难度
   tags?: string[];                 // 标签
-  images?: ImageRef[];             // 图片相对路径列表
+  images?: string[];               // 图片路径（v1.1 暂允许空数组；目录形态待后续版本）
 
-  // ===== 系统字段 =====
-  updatedAt?: number;              // 更新时间戳（毫秒）
-  answerHistory?: AnswerRecord[];  // 作答记录（本地存储）
+  // ===== 可选时间戳 =====
+  createdAt?: number;              // 缺省由服务端填
+  updatedAt?: number;              // 缺省由服务端填
+}
+```
+
+> **注意**：导入文件**不写 `id`**。`id: number` 是后端 `questions.id` 自增主键，导入时由后端分配。前端从 API 拿到的 `Question` 对象会带 `id`。
+
+### 2.6 题库元信息 (Metadata)
+
+```typescript
+interface Metadata {
+  schemaVersion: string;           // 必填，当前版本固定 "1.1.0"
+  id: string;                      // 必填，题库唯一标识（slug，如 "db-exercises"）
+  name: string;                    // 必填，题库展示名
+  description?: string;            // 可选
+  language?: string;               // 可选，如 "zh-CN"
+  author?: string;                 // 可选
+  source?: string;                 // 可选，如 "课本第 3 章习题"
+  questionCount?: number;          // 可选，题目数量
+  createdAt?: number;              // 可选
+  updatedAt?: number;              // 可选
+  _warnings?: string[];            // 可选，转换工具回填的警告（人工 review 用）
 }
 ```
 
@@ -100,280 +127,149 @@ interface Question {
 
 ## 三、字段详解
 
-### 3.1 必填字段
+### 3.1 `sourceId` 命名规则（重要）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | string | 全局唯一标识，建议格式：`q_{考试}_{部分}_{题号}` |
-| `type` | QuestionType | 题型枚举 |
-| `content` | string | 题干内容，支持纯文本 |
-| `answer` | string \| boolean | 答案，见下表 |
-| `createdAt` | number | 创建时间戳（毫秒） |
+`sourceId` 是导入幂等键：**同一 `sourceId` 多次导入只 upsert，不重复建题**。
 
-**答案格式：**
+**建议格式：** `{bank-slug}-{part-slug}-q{N}`
 
-| 题型 | 类型 | 示例 |
-|------|------|------|
-| single | string | `"A"` |
-| multiple | string | `"A,B,C"`（逗号分隔，字母大写，已排序） |
-| judge | boolean | `true`（正确）或 `false`（错误） |
+| 题库 | 部分 | 题号 | sourceId |
+|------|------|------|----------|
+| 数据库习题 | 习题1 | 1 | `db-ex-p1-q1` |
+| 数据库习题 | 习题1 | 5 | `db-ex-p1-q5` |
+| 江苏事业编 | 客观题 | 23 | `js-inst-obj-q23` |
 
-### 3.2 选择题必填字段
+**规则：**
+- 全小写、`-` 分隔
+- 不含中文（slug 化）
+- `q` 前缀避免和数字 part 混
+- 导入失败修复后**保留原 sourceId** 重导才能 upsert 而非新建
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `options` | string[] | 选项数组，按顺序对应 A/B/C/D，至少 2 个选项 |
+### 3.2 必填字段速查
 
-**示例：**
-```json
-{
-  "options": ["选项A内容", "选项B内容", "选项C内容", "选项D内容"]
-}
-```
+| 字段 | 题型 | 类型 | 备注 |
+|------|------|------|------|
+| `sourceId` | 全部 | string | 幂等键 |
+| `type` | 全部 | string 枚举 | single / multiple / judge |
+| `content` | 全部 | string | 题干 |
+| `answer` | 全部 | string | 见 §2.3 答案格式 |
+| `options` | single / multiple | string[] | 至少 2 个 |
 
-### 3.3 可选字段
+### 3.3 可选字段填充建议
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `exam` | ExamRef | 所属考试信息，方便按试卷练习 |
-| `explanation` | string | 答案解析 |
-| `difficulty` | Difficulty | 难度等级：1=简单，2=中等，3=困难 |
-| `tags` | string[] | 标签，如 `["计算机", "网络"]` |
-| `images` | string[] | 图片相对路径列表 |
+转换工具默认应**尽力填**这些字段，提升题库可用性：
 
-### 3.4 系统字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `updatedAt` | number | 最后更新时间戳 |
-| `answerHistory` | AnswerRecord[] | 用户作答记录，存储在本地 IndexedDB |
+| 字段 | 不填的代价 | 填法 |
+|------|-----------|------|
+| `exam` | 无法按试卷筛选 | 至少填 `name` + `part` |
+| `examOrder` | 失去原题号顺序 | 抄原 PDF/Word 的题号 |
+| `explanation` | 错题复习时无解析参考 | 原文有就抄；没有就**不写**（**不要编造**） |
+| `difficulty` | 无法按难度刷 | 简单 1 / 中等 2 / 困难 3，不确定填 2 |
+| `tags` | 无法按知识点筛 | 学科 + 知识点 + 题型，至少 2-3 个 |
 
 ---
 
 ## 四、示例
 
-### 4.1 单选题
+### 4.1 完整题库文件（推荐形态）
 
 ```json
 {
-  "id": "q_2017h2_js_obj_15",
-  "type": "single",
-  "content": "下列关于计算机网络的叙述中，正确的是：",
-  "options": [
-    "局域网的范围比广域网大",
-    "城域网介于局域网和广域网之间",
-    "互联网就是万维网",
-    "以太网是一种广域网"
-  ],
-  "answer": "B",
-  "exam": {
-    "name": "2017年下半年江苏省事业单位招聘考试",
-    "year": 2017,
-    "subject": "综合知识和能力素质",
-    "part": "客观题",
-    "order": 15
+  "metadata": {
+    "schemaVersion": "1.1.0",
+    "id": "db-exercises",
+    "name": "数据库习题",
+    "language": "zh-CN",
+    "author": "我",
+    "source": "课本配套习题",
+    "questionCount": 3
   },
-  "explanation": "城域网覆盖范围介于局域网和广域网之间，通常覆盖一个城市。",
-  "difficulty": 2,
-  "tags": ["计算机", "网络"],
-  "createdAt": 1700000000000
+  "questions": [
+    {
+      "sourceId": "db-ex-p1-q1",
+      "type": "single",
+      "content": "下列关于关系数据库的描述，正确的是：",
+      "options": [
+        "关系是有序的",
+        "关系是元组的集合",
+        "关系允许重复元组",
+        "关系的属性顺序固定"
+      ],
+      "answer": "B",
+      "exam": { "name": "数据库习题", "part": "习题1" },
+      "examOrder": 1,
+      "explanation": "关系是元组的无序集合，不允许重复，属性顺序无关。",
+      "difficulty": 2,
+      "tags": ["数据库", "关系模型", "基础"]
+    },
+    {
+      "sourceId": "db-ex-p1-q5",
+      "type": "multiple",
+      "content": "下列哪些是关系数据库的完整性约束？",
+      "options": ["实体完整性", "参照完整性", "用户自定义完整性", "排序完整性"],
+      "answer": "A,B,C",
+      "exam": { "name": "数据库习题", "part": "习题1" },
+      "examOrder": 5,
+      "difficulty": 2,
+      "tags": ["数据库", "完整性约束"]
+    },
+    {
+      "sourceId": "db-ex-p1-q10",
+      "type": "judge",
+      "content": "SQL 中 DELETE 语句不能删除表结构。",
+      "answer": "true",
+      "exam": { "name": "数据库习题", "part": "习题1" },
+      "examOrder": 10,
+      "explanation": "DELETE 删除数据；DROP TABLE 才删除表结构。",
+      "difficulty": 1,
+      "tags": ["SQL", "DML"]
+    }
+  ]
 }
 ```
 
-### 4.2 多选题
+### 4.2 最小可用形态（仅必填）
 
 ```json
 {
-  "id": "q_2017h2_js_obj_23",
-  "type": "multiple",
-  "content": "以下哪些属于 OSI 七层模型的层次？",
-  "options": [
-    "会话层",
-    "链路层",
-    "表示层",
-    "接口层"
-  ],
-  "answer": "A,B,C",
-  "exam": {
-    "name": "2017年下半年江苏省事业单位招聘考试",
-    "year": 2017,
-    "subject": "综合知识和能力素质",
-    "part": "客观题",
-    "order": 23
+  "metadata": {
+    "schemaVersion": "1.1.0",
+    "id": "minimal",
+    "name": "最小题库"
   },
-  "explanation": "OSI 七层：物理层、数据链路层、网络层、传输层、会话层、表示层、应用层。",
-  "difficulty": 2,
-  "tags": ["计算机", "网络", "OSI"],
-  "createdAt": 1700000000000
-}
-```
-
-### 4.3 判断题
-
-```json
-{
-  "id": "q_2017h2_js_pro_01",
-  "type": "judge",
-  "content": "TCP协议提供面向连接的、可靠的数据传输服务。",
-  "answer": true,
-  "exam": {
-    "name": "2017年下半年江苏省事业单位招聘考试",
-    "year": 2017,
-    "subject": "综合知识和能力素质",
-    "part": "专业知识",
-    "order": 1
-  },
-  "explanation": "TCP是传输层协议，提供面向连接、可靠、有序的数据传输。",
-  "tags": ["计算机", "网络", "TCP"],
-  "createdAt": 1700000000000
-}
-```
-
-### 4.4 带图片的题目
-
-```json
-{
-  "id": "q_2017h2_js_obj_35",
-  "type": "single",
-  "content": "如图所示的网络拓扑结构是：",
-  "options": ["星型", "环型", "总线型", "树型"],
-  "answer": "A",
-  "images": ["./images/2017_obj_35.png"],
-  "exam": {
-    "name": "2017年下半年江苏省事业单位招聘考试",
-    "year": 2017,
-    "subject": "综合知识和能力素质",
-    "part": "客观题",
-    "order": 35
-  },
-  "createdAt": 1700000000000
+  "questions": [
+    {
+      "sourceId": "min-q1",
+      "type": "single",
+      "content": "1+1=?",
+      "options": ["1", "2", "3", "4"],
+      "answer": "B"
+    }
+  ]
 }
 ```
 
 ---
 
-## 五、题库目录结构
+## 五、文件形态
 
-```
-question-banks/
-└── jiangsu-institution/           # 题库目录
-    ├── metadata.json              # 题库元信息
-    ├── questions.json             # 题目数据
-    └── images/                    # 图片文件夹
-        ├── 2017_obj_35.png
-        ├── 2018_obj_12.png
-        └── ...
-```
+**v1.1 固化形态：单 JSON 文件 + metadata wrapper**（即 §4.1 形态）。
 
-### 5.1 metadata.json
+向后兼容：导入工具同时接受**纯数组形态**（顶层就是 `Question[]`），但**不推荐**——少 metadata 就少 schemaVersion，未来演进困难。
 
-```json
-{
-  "id": "jiangsu-institution",
-  "name": "江苏事业编-计算机岗",
-  "description": "江苏省事业单位招聘考试计算机专业技术岗真题",
-  "language": "zh-CN",
-  "author": "贡献者名称",
-  "source": "真题整理",
-  "createdAt": 1700000000000,
-  "updatedAt": 1700000000000,
-  "questionCount": 150
-}
-```
-
-### 5.2 questions.json
-
-```json
-[
-  { "id": "q_2017h2_js_obj_01", ... },
-  { "id": "q_2017h2_js_obj_02", ... },
-  ...
-]
-```
+> 目录形态（多文件 + `images/`）规划在 v1.2 引入图片支持时再做。当前 `images` 字段允许空数组占位。
 
 ---
 
 ## 六、国际化方案
 
-### 6.1 数据层
-
-数据层使用语言无关的值：
-
-- 题型：`single`, `multiple`, `judge`
-- 判断题答案：`true`, `false`
-- 难度：`1`, `2`, `3`
-
-### 6.2 显示层
-
-由 i18n 模块处理显示文本：
-
-```typescript
-// zh-CN
-const i18n = {
-  questionType: {
-    single: '单选题',
-    multiple: '多选题',
-    judge: '判断题'
-  },
-  judgeAnswer: {
-    true: '正确',
-    false: '错误'
-  },
-  difficulty: {
-    1: '简单',
-    2: '中等',
-    3: '困难'
-  }
-};
-
-// en-US
-const i18n = {
-  questionType: {
-    single: 'Single Choice',
-    multiple: 'Multiple Choice',
-    judge: 'True/False'
-  },
-  judgeAnswer: {
-    true: 'True',
-    false: 'False'
-  },
-  difficulty: {
-    1: 'Easy',
-    2: 'Medium',
-    3: 'Hard'
-  }
-};
-```
+数据层使用语言无关的值（`single` / `multiple` / `judge` / `1` / `2` / `3` / `"true"` / `"false"`），显示层由 i18n 处理。详细映射见 v1.0 附录（保留不变）。
 
 ---
 
-## 七、图片处理规范
-
-### 7.1 存储方式
-
-- 图片存放在题库目录的 `images/` 文件夹内
-- JSON 中使用相对路径引用：`"./images/文件名.png"`
-
-### 7.2 命名规范
-
-建议命名格式：`{考试}_{部分}_{题号}.{扩展名}`
-
-示例：`2017_obj_15.png`
-
-### 7.3 支持格式
-
-| 格式 | 扩展名 | 适用场景 |
-|------|--------|----------|
-| PNG | .png | 截图、图表（推荐） |
-| JPEG | .jpg, .jpeg | 照片 |
-| GIF | .gif | 动图 |
-| SVG | .svg | 矢量图 |
-| WebP | .webp | 现代格式，体积小 |
-
----
-
-## 八、版本历史
+## 七、版本历史
 
 | 版本 | 日期 | 变更说明 |
 |------|------|----------|
 | 1.0.0 | 2026-03-14 | 初始版本 |
+| 1.1.0 | 2026-05-08 | 拆 sourceId / id；判断题答案字符串化；createdAt 可选；metadata 加 schemaVersion；多选答案排序规则明确；文件形态固化为单 JSON wrapper |

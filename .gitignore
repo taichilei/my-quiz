@@ -51,3 +51,6 @@ uploads/
 # Temp debug files
 tmp-*.js
 debug-*.js
+
+# Local scratch directory
+temp/
