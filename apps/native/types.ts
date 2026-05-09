@@ -12,8 +12,11 @@ export type DataSourceType = 'human' | 'machine';
 
 /**
  * 题目类型
+ *
+ * - single / multiple / judge: 自动判分
+ * - essay: 简答题/名词解释，自评判分
  */
-export type QuestionType = 'single' | 'multiple' | 'judge';
+export type QuestionType = 'single' | 'multiple' | 'judge' | 'essay';
 
 /**
  * 难度等级

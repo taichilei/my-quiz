@@ -5,8 +5,11 @@ export type DataSourceType = 'human' | 'machine';
 
 /**
  * 题目类型
+ *
+ * - single / multiple / judge: 自动判分（与 answer 比对）
+ * - essay: 简答题/名词解释，自评判分（用户看完参考答案后自己点掌握/未掌握）
  */
-export type QuestionType = 'single' | 'multiple' | 'judge';
+export type QuestionType = 'single' | 'multiple' | 'judge' | 'essay';
 
 /**
  * 难度等级

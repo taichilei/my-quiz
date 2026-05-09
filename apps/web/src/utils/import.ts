@@ -10,7 +10,9 @@ export function validateQuestion(q: unknown): q is Question {
 
   // 必填字段检查
   if (typeof question.id !== 'string' || !question.id) return false;
-  if (!['single', 'multiple', 'judge'].includes(question.type as string)) {
+  if (
+    !['single', 'multiple', 'judge', 'essay'].includes(question.type as string)
+  ) {
     return false;
   }
   if (typeof question.content !== 'string' || !question.content) return false;
@@ -18,15 +20,23 @@ export function validateQuestion(q: unknown): q is Question {
   // 答案检查
   if (question.type === 'judge') {
     if (typeof question.answer !== 'boolean') return false;
+  } else if (question.type === 'essay') {
+    // essay 答案可选：可为空串或缺省，但若存在必须是 string
+    if (question.answer !== undefined && typeof question.answer !== 'string') {
+      return false;
+    }
   } else {
     if (typeof question.answer !== 'string' || !question.answer) return false;
   }
 
-  // 选择题必须有选项
+  // 选项检查
   if (question.type === 'single' || question.type === 'multiple') {
     if (!Array.isArray(question.options) || question.options.length < 2) {
       return false;
     }
+  } else if (question.options !== undefined) {
+    // judge / essay 禁止 options
+    return false;
   }
 
   return true;

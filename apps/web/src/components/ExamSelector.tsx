@@ -143,6 +143,7 @@ export default function ExamSelector({
       single: 0,
       multiple: 0,
       judge: 0,
+      essay: 0,
     };
     filteredQuestions.forEach((q) => {
       typeCount[q.type]++;
@@ -248,7 +249,7 @@ export default function ExamSelector({
               <div>
                 <h3 className="font-bold text-gray-800 dark:text-white text-lg">全部题目</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  单选 {stats.single} · 多选 {stats.multiple} · 判断 {stats.judge}
+                  单选 {stats.single} · 多选 {stats.multiple} · 判断 {stats.judge} · 简答 {stats.essay}
                 </p>
               </div>
             </div>

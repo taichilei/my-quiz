@@ -56,6 +56,10 @@ export default function QuizCard({
     userAnswer: string | boolean,
     correctAnswer: string | boolean
   ): boolean => {
+    // essay 是自评：__correct__ 表示用户判定自己答对
+    if (currentQuestion.type === 'essay') {
+      return userAnswer === '__correct__';
+    }
     if (
       currentQuestion.type === 'multiple' &&
       typeof userAnswer === 'string' &&
@@ -222,6 +226,7 @@ export default function QuizCard({
     single: '单选题',
     multiple: '多选题',
     judge: '判断题',
+    essay: '简答题',
   };
 
   const isCorrect =
@@ -313,7 +318,7 @@ export default function QuizCard({
           );
         })}
       </div>
-      <ActionButtons isJudge />
+      <ActionButtons />
     </>
   );
 
@@ -416,7 +421,125 @@ export default function QuizCard({
     </>
   );
 
-  const ActionButtons = ({ isJudge = false, isMultiple = false } = {}) => {
+  const EssayMode = () => {
+    const isShown =
+      selectedAnswer === '__shown__' ||
+      selectedAnswer === '__correct__' ||
+      selectedAnswer === '__wrong__';
+    const referenceAnswer =
+      typeof currentQuestion.answer === 'string' ? currentQuestion.answer : '';
+
+    const handleShowAnswer = () => {
+      if (isShown) return;
+      onSelectedAnswerChange('__shown__');
+    };
+
+    const handleSelfEvaluate = (correct: boolean) => {
+      if (showResult) return;
+      onSelectedAnswerChange(correct ? '__correct__' : '__wrong__');
+      onShowResultChange(true);
+      if (correct) onCorrectCountChange((c) => c + 1);
+
+      recordApi
+        .create({
+          userId: USER_ID,
+          questionId: currentQuestion.id,
+          userAnswer: '',
+          isCorrect: correct,
+          answeredAt: Date.now(),
+        })
+        .catch((err) => console.error('Failed to record answer:', err));
+    };
+
+    return (
+      <div className="space-y-3 mb-4">
+        {!isShown ? (
+          <button
+            onClick={handleShowAnswer}
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
+          >
+            📖 显示参考答案
+          </button>
+        ) : (
+          <>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2">
+                参考答案
+              </p>
+              {referenceAnswer ? (
+                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                  {referenceAnswer}
+                </p>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 italic">
+                  该题暂无参考答案，请凭记忆自评
+                </p>
+              )}
+            </div>
+            {!showResult ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleSelfEvaluate(false)}
+                  className="bg-red-50 dark:bg-red-900/30 border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 py-3 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors btn-press"
+                >
+                  😅 没答对
+                </button>
+                <button
+                  onClick={() => handleSelfEvaluate(true)}
+                  className="bg-green-50 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 py-3 rounded-xl font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors btn-press"
+                >
+                  🎉 我答对了
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`p-4 rounded-xl fade-in ${
+                    selectedAnswer === '__correct__'
+                      ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+                  }`}
+                >
+                  <p
+                    className={`font-medium flex items-center gap-2 ${
+                      selectedAnswer === '__correct__'
+                        ? 'text-green-700 dark:text-green-400'
+                        : 'text-red-700 dark:text-red-400'
+                    }`}
+                  >
+                    {selectedAnswer === '__correct__' ? (
+                      <>
+                        <span>🎉</span>已掌握
+                      </>
+                    ) : (
+                      <>
+                        <span>💪</span>未掌握，下次加油
+                      </>
+                    )}
+                  </p>
+                  {currentQuestion.explanation && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 pl-7">
+                      💡 {currentQuestion.explanation}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={nextQuestion}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 btn-press"
+                >
+                  {currentIndex + 1 >= displayQuestions.length
+                    ? '🎯 完成'
+                    : '下一题 →'}
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const ActionButtons = ({ isMultiple = false } = {}) => {
     const selectedArr =
       typeof selectedAnswer === 'string'
         ? selectedAnswer.split(',').filter(Boolean)
@@ -554,6 +677,7 @@ export default function QuizCard({
           {currentQuestion.type === 'judge' && <JudgeOptions />}
           {currentQuestion.type === 'single' && <SingleOptions />}
           {currentQuestion.type === 'multiple' && <MultipleOptions />}
+          {currentQuestion.type === 'essay' && <EssayMode />}
         </div>
       </div>
     </div>

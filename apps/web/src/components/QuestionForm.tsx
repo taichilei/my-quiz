@@ -118,7 +118,8 @@ export default function QuestionForm({
     // 验证
     if (!content.trim()) return;
     if (type === 'judge' && answer === '') return;
-    if (type !== 'judge' && !answer) return;
+    // essay 的 answer 可选；single / multiple 必填
+    if ((type === 'single' || type === 'multiple') && !answer) return;
     if (
       (type === 'single' || type === 'multiple') &&
       options.filter((o) => o.trim()).length > 0 &&
@@ -149,7 +150,7 @@ export default function QuestionForm({
           type,
           content: content.trim(),
           options:
-            type === 'judge'
+            type === 'judge' || type === 'essay'
               ? undefined
               : options.map((o) => o.trim()).filter(Boolean),
           answer: type === 'judge' ? (answer as boolean) : (answer as string),
@@ -172,7 +173,10 @@ export default function QuestionForm({
         const question: Omit<Question, 'id'> = {
           type,
           content: content.trim(),
-          options: type === 'judge' ? undefined : options.map((o) => o.trim()),
+          options:
+            type === 'judge' || type === 'essay'
+              ? undefined
+              : options.map((o) => o.trim()),
           answer: type === 'judge' ? (answer as boolean) : (answer as string),
           explanation: explanation.trim() || undefined,
           difficulty: difficulty || undefined,
@@ -251,6 +255,7 @@ export default function QuestionForm({
           <option value="single">单选题</option>
           <option value="multiple">多选题</option>
           <option value="judge">判断题</option>
+          <option value="essay">简答题</option>
         </select>
       </div>
 
@@ -269,8 +274,8 @@ export default function QuestionForm({
         />
       </div>
 
-      {/* 选项（非判断题） */}
-      {type !== 'judge' && (
+      {/* 选项（仅 single / multiple） */}
+      {(type === 'single' || type === 'multiple') && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             选项
@@ -294,9 +299,18 @@ export default function QuestionForm({
       {/* 答案 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          答案 {type === 'multiple' && '（多选用逗号分隔，如：A,B,C）'}
+          {type === 'essay' ? '参考答案（可选）' : '答案'}{' '}
+          {type === 'multiple' && '（多选用逗号分隔，如：A,B,C）'}
         </label>
-        {type === 'judge' ? (
+        {type === 'essay' ? (
+          <textarea
+            value={answer as string}
+            onChange={(e) => setAnswer(e.target.value)}
+            rows={4}
+            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="参考答案，可留空作为抽认卡使用..."
+          />
+        ) : type === 'judge' ? (
           <select
             value={answer === true ? 'true' : answer === false ? 'false' : ''}
             onChange={(e) => {
