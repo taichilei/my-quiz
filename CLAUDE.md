@@ -10,6 +10,8 @@ My-Quiz 是一个多端刷题应用，采用前后端分离架构：
 - **后端**（`server/`）：Go + Gin + PostgreSQL（GORM），提供 RESTful API，多端共用
 - 支持多设备同步，核心功能：题目管理、随机刷题、错题本、统计信息、批量导入导出、未完成进度跨设备恢复
 
+**Git 与分支：** 本仓库**主分支是 `dev`，不是 `main`**。所有 PR、文档链接、`git log` 对照基线都用 `dev`。除非用户明说，不要往 `main` 上推或开 PR。
+
 ---
 
 ## 常用命令
@@ -140,6 +142,8 @@ my-quiz/
 - `src/types.ts` 是**前后端类型契约**（Question / ExamRef / AnswerRecord / SavedQuizProgress 等），加字段时要同步后端 model 和此文件。
 - `src/db.ts` 是**已弃用的 IndexedDB 适配层**，仅保留旧用户数据迁移用途，不要往里加新逻辑。
 - `src/utils/progressStorage.ts` 是**localStorage 本地兜底**，与后端 `/api/session` 是双写关系，断网时用 localStorage，恢复时优先后端。
+- `src/context/ThemeContext.tsx` 是**主题（深浅色）唯一来源**，组件通过 `useTheme()` 订阅，不要在子组件里读 `localStorage` 或 `prefers-color-scheme`。
+- `src/hooks/` 放可复用 hooks（目前只有 `useOrientation`，监听屏幕方向用于 landscape 布局），新增跨组件副作用/订阅式状态优先放这里。
 
 **技术：** React 18 + TypeScript 5 + Tailwind + Vite + Vitest + RTL；PWA + Service Worker 离线缓存。
 
@@ -184,7 +188,7 @@ my-quiz/
 
 **需要 JWT 认证的接口（Authorization: Bearer <token>）：**
 
-**调试：**
+**调试（需 JWT）：**
 - `GET /api/debug/client-info` - 回显当前请求被 `ClientInfoMiddleware` 解析出的端信息，便于多端联调
 
 **用户管理：**
@@ -337,7 +341,9 @@ UpdatedAt   int64        // 更新时间戳
   - `PORT` - 服务端口（默认 8080）
   - `POSTGRES_URI` - PostgreSQL 连接字符串
   - `JWT_SECRET` - JWT 签名密钥（生产环境必须设置，默认开发密钥）
+  - `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM_NAME` - 邮件发送（dev 默认指向本机 mailpit `localhost:1025`，UI 在 `:8025`；生产换成真实 SMTP）
 - 前端：`VITE_API_URL` - 后端 API 地址（默认 `http://localhost:8080`）
+- 模板：后端 `server/.env.example`（`cp` 到 `server/.env` 即可），前端 `apps/web/.env.example`
 - 默认连接字符串（Docker）：`postgres://postgres:postgres@postgres:5432/my-quiz?sslmode=disable`
 
 ### 测试
@@ -374,32 +380,6 @@ UpdatedAt   int64        // 更新时间戳
 
 **提交信息约定：** Conventional Commits + 中文描述（type/scope 用英文，正文用中文）。常见 type：`feat` / `fix` / `refactor` / `docs` / `chore` / `test`；scope 写模块（如 `auth`、`server`、`web`、`native`、`async`、`github`）。例：`feat(auth): 邮箱必填注册并在邮箱变更后触发重新验证`、`refactor(server): 测试切到 testcontainers + 真 PostgreSQL`。生成新 commit 前先 `git log` 看最近若干条对齐风格。
 
-### 数据库迁移
-- 当前项目已从**纯前端 IndexedDB 本地存储**架构演进为**前后端分离 + PostgreSQL**架构
-- 支持多设备数据同步
-- 所有业务数据存储在 PostgreSQL 中，不提交到 git 代码库
-- PostgreSQL 通过 Docker Compose 在本地容器化运行
-- 后端使用 GORM ORM 操作数据库
-- 保留 `apps/web/src/db.ts` 用于旧数据迁移（用户可以从旧 IndexedDB 导出数据，再导入到新系统）
-
-### Docker 重新打包部署
-当代码修改后需要重新打包部署到本地 Docker：
-```bash
-# 1. 停止当前运行的容器
-make down
-
-# 2. 重新构建镜像
-make build
-
-# 3. 启动服务
-make up
-
-# 查看启动日志
-make logs
-```
-- 数据库数据会保留在 Docker 卷中，不会丢失
-- 如果需要完全清空数据库重新开始：`make clean` 会删除数据卷
-
 ### 数据流
 
 **初始化流程：**
@@ -433,6 +413,9 @@ QuizCard → 用户点击选项 → 回调 App 更新状态 → 调用 recordApi
 
 ## 文档参考
 
+- [README](./README.md) - 仓库简介与快速开始
+- [CONTRIBUTING](./CONTRIBUTING.md) - 贡献指南、提交规范、PR 流程
+- [LICENSE](./LICENSE) - AGPL-3.0
 - [PRD](./docs/PRD.md) - 产品需求文档
 - [用户文档](./docs/user-guide/README.md) - 使用指南
 - [开发者文档](./docs/developer-guide/README.md) - 详细开发指南
@@ -447,3 +430,5 @@ QuizCard → 用户点击选项 → 回调 App 更新状态 → 调用 recordApi
 项目架构经历了两个阶段：
 1. **v0.x** - 纯前端方案：React + IndexedDB，数据存储在浏览器本地，不支持多设备同步
 2. **v1.x** - 前后端分离方案：React + Go + PostgreSQL，数据持久化在后端，支持多设备同步和进度跨设备恢复
+
+`apps/web/src/db.ts` 保留为已弃用的 IndexedDB 适配层，仅用于让 v0.x 老用户把本地数据导出后再导入到 v1.x，不要往里加新逻辑。
