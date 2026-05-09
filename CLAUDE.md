@@ -258,7 +258,7 @@ UpdatedAt   int64     // 更新时间戳
 ### 题目（Question）
 ```go
 ID          int       // 数据库唯一标识（自增）
-Type        string    // 题型: single|multiple|judge
+Type        string    // 题型: single|multiple|judge|essay
 Content     string    // 题干内容
 Options     []string  // 选项数组（单选多选），JSON 序列化存储
 Answer      string    // 正确答案
@@ -322,10 +322,15 @@ UpdatedAt   int64        // 更新时间戳
 ## 开发说明
 
 ### 添加新题型步骤
-1. 更新 `apps/web/src/types.ts` 中的 `QuestionType` 联合类型
+1. 更新 `apps/web/src/types.ts` 和 `apps/native/types.ts` 中的 `QuestionType` 联合类型（两处必须同步）
 2. 更新 `apps/web/src/components/QuizCard.tsx` 添加渲染逻辑
 3. 更新 `apps/web/src/components/QuestionForm.tsx` 添加表单选项
-4. 后端无需修改，使用动态 JSON 结构兼容
+4. 同步 `docs/question-schema.md`（带版本号 + 变更行），并按需调整 `apps/web/src/utils/import.ts` 的导入校验
+5. 后端无需修改，使用动态 JSON 结构兼容
+
+**判分方式两类，落 `AnswerRecord` 时区分写法：**
+- **自动判分**（`single` / `multiple` / `judge`）：`userAnswer` 存用户原始答案，`isCorrect` 由 `QuizCard` 与 `answer` 比对得出
+- **自评判分**（`essay`，简答题 / 名词解释）：`QuizCard` 用 `selectedAnswer` 的 sentinel 值驱动 UI —— `__shown__`（已显示参考答案）/ `__correct__`（用户点「掌握」）/ `__wrong__`（用户点「未掌握」）。落库时 `userAnswer` 留空字符串，`isCorrect` 直接取自评结果。`essay` 题 `answer` 字段可空（缺参考答案时进抽认卡模式），导入时**禁止**带 `options`
 
 ### 环境变量
 - 后端：
